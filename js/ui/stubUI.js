@@ -11,6 +11,8 @@
  */
 
 import * as facilityStubs from '../stubs/facilityStubs.js';
+import * as modelStubs from '../stubs/modelStubs.js';
+import { getDefaultModelURN } from '../api.js';
 
 // Store current facility context for STUB functions
 let currentFacilityURN = null;
@@ -67,6 +69,86 @@ export function renderStubs(container, facilityURN, region) {
   
   container.appendChild(facilityDropdown);
   
+  // Create Model Stubs Dropdown
+  const modelDropdown = createDropdownMenu('Model Stubs', [
+    {
+      label: 'GET Model Properties',
+      action: () => modelStubs.getModelProperties(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
+      hasInput: true,
+      inputConfig: {
+        label: 'Model URN',
+        defaultValue: () => getDefaultModelURN(currentFacilityURN),
+        placeholder: 'Enter model URN...',
+        onExecute: (value) => modelStubs.getModelProperties(value, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'GET Model',
+      action: () => modelStubs.getModel(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
+      hasInput: true,
+      inputConfig: {
+        label: 'Model URN',
+        defaultValue: () => getDefaultModelURN(currentFacilityURN),
+        placeholder: 'Enter model URN...',
+        onExecute: (value) => modelStubs.getModel(value, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'GET AEC Model Data',
+      action: () => modelStubs.getAECModelData(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
+      hasInput: true,
+      inputConfig: {
+        label: 'Model URN',
+        defaultValue: () => getDefaultModelURN(currentFacilityURN),
+        placeholder: 'Enter model URN...',
+        onExecute: (value) => modelStubs.getAECModelData(value, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'GET Model Data Attributes',
+      action: () => modelStubs.getModelDataAttrs(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
+      hasInput: true,
+      inputConfig: {
+        label: 'Model URN',
+        defaultValue: () => getDefaultModelURN(currentFacilityURN),
+        placeholder: 'Enter model URN...',
+        onExecute: (value) => modelStubs.getModelDataAttrs(value, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'GET Model Data Schema',
+      action: () => modelStubs.getModelDataSchema(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
+      hasInput: true,
+      inputConfig: {
+        label: 'Model URN',
+        defaultValue: () => getDefaultModelURN(currentFacilityURN),
+        placeholder: 'Enter model URN...',
+        onExecute: (value) => modelStubs.getModelDataSchema(value, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'GET Model Data Fragments',
+      action: () => modelStubs.getModelDataFragments(getDefaultModelURN(currentFacilityURN), currentFacilityRegion, ''),
+      hasInput: true,
+      inputConfig: {
+        label: 'Model URN',
+        defaultValue: () => getDefaultModelURN(currentFacilityURN),
+        placeholder: 'Enter model URN...',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, optional)',
+            id: 'elemKeys',
+            placeholder: 'Leave empty for entire model',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, elemKeys) => modelStubs.getModelDataFragments(modelUrn, currentFacilityRegion, elemKeys || '')
+      }
+    }
+  ]);
+  
+  container.appendChild(modelDropdown);
+  
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
   helpDiv.className = 'mt-4 p-3 bg-dark-bg border border-dark-border rounded text-xs text-dark-text-secondary';
@@ -84,7 +166,7 @@ export function renderStubs(container, facilityURN, region) {
  * Create a dropdown menu with STUB functions
  * 
  * @param {string} title - Dropdown title
- * @param {Array} items - Array of {label, action} objects
+ * @param {Array} items - Array of {label, action, hasInput, inputConfig} objects
  * @returns {HTMLElement} Dropdown menu element
  */
 function createDropdownMenu(title, items) {
@@ -106,27 +188,134 @@ function createDropdownMenu(title, items) {
   content.className = 'dropdown-content';
   
   // Add items
-  items.forEach(item => {
+  items.forEach((item, index) => {
+    const itemContainer = document.createElement('div');
+    
     const button = document.createElement('button');
     button.className = 'dropdown-item';
     button.textContent = item.label;
     
-    button.addEventListener('click', async () => {
-      button.disabled = true;
-      const originalText = button.textContent;
-      button.textContent = `${originalText} (running...)`;
+    // If item needs input, create expandable form
+    if (item.hasInput && item.inputConfig) {
+      const formId = `input-form-${Date.now()}-${index}`;
+      const inputForm = document.createElement('div');
+      inputForm.id = formId;
+      inputForm.className = 'stub-input-form hidden';
+      inputForm.style.margin = '0.5rem';
+      inputForm.style.marginTop = '0';
       
-      try {
-        await item.action();
-      } catch (error) {
-        console.error('Error executing stub:', error);
-      } finally {
-        button.disabled = false;
-        button.textContent = originalText;
+      // Main input field
+      const mainLabel = document.createElement('label');
+      mainLabel.textContent = item.inputConfig.label;
+      mainLabel.className = 'block text-xs text-dark-text mb-1';
+      
+      const mainInput = document.createElement('input');
+      mainInput.type = 'text';
+      mainInput.placeholder = item.inputConfig.placeholder;
+      mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
+        ? item.inputConfig.defaultValue() 
+        : item.inputConfig.defaultValue;
+      mainInput.className = 'w-full text-xs';
+      
+      inputForm.appendChild(mainLabel);
+      inputForm.appendChild(mainInput);
+      
+      // Additional fields if specified
+      const additionalInputs = [];
+      if (item.inputConfig.additionalFields) {
+        item.inputConfig.additionalFields.forEach(field => {
+          const label = document.createElement('label');
+          label.textContent = field.label;
+          label.className = 'block text-xs text-dark-text mb-1 mt-2';
+          
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = field.placeholder;
+          input.value = field.defaultValue || '';
+          input.className = 'w-full text-xs';
+          
+          inputForm.appendChild(label);
+          inputForm.appendChild(input);
+          additionalInputs.push(input);
+        });
       }
-    });
+      
+      // Button container
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'flex gap-2 mt-2';
+      
+      // Execute button
+      const executeBtn = document.createElement('button');
+      executeBtn.textContent = 'Execute';
+      executeBtn.className = 'flex-1 text-xs';
+      
+      // Cancel button
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.className = 'flex-1 text-xs';
+      cancelBtn.style.background = '#404040';
+      
+      executeBtn.addEventListener('click', async () => {
+        executeBtn.disabled = true;
+        executeBtn.textContent = 'Running...';
+        
+        try {
+          // Gather all input values
+          const values = [mainInput.value, ...additionalInputs.map(inp => inp.value)];
+          await item.inputConfig.onExecute(...values);
+          
+          // Collapse form after success
+          inputForm.classList.add('hidden');
+        } catch (error) {
+          console.error('Error executing stub:', error);
+        } finally {
+          executeBtn.disabled = false;
+          executeBtn.textContent = 'Execute';
+        }
+      });
+      
+      cancelBtn.addEventListener('click', () => {
+        inputForm.classList.add('hidden');
+      });
+      
+      buttonContainer.appendChild(executeBtn);
+      buttonContainer.appendChild(cancelBtn);
+      inputForm.appendChild(buttonContainer);
+      
+      // Button click toggles form visibility
+      button.addEventListener('click', () => {
+        inputForm.classList.toggle('hidden');
+        // Refresh default value when opening
+        if (!inputForm.classList.contains('hidden')) {
+          mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
+            ? item.inputConfig.defaultValue() 
+            : item.inputConfig.defaultValue;
+        }
+      });
+      
+      itemContainer.appendChild(button);
+      itemContainer.appendChild(inputForm);
+    } else {
+      // Regular item without input
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.textContent = `${originalText} (running...)`;
+        
+        try {
+          await item.action();
+        } catch (error) {
+          console.error('Error executing stub:', error);
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      });
+      
+      itemContainer.appendChild(button);
+    }
     
-    content.appendChild(button);
+    content.appendChild(itemContainer);
   });
   
   // Toggle visibility on click
