@@ -386,31 +386,20 @@ function createDropdownMenu(title, items) {
             
             additionalInputs.push(checkbox);
           } else {
-            // Text input field
+            // Text input field (or select for autocomplete)
             const label = document.createElement('label');
             label.textContent = field.label;
             if (fieldIdx > 0) label.style.marginTop = '0.5rem';
             
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.id = field.id;
-            input.placeholder = field.placeholder || '';
-            input.value = typeof field.defaultValue === 'function' 
-              ? field.defaultValue() 
-              : (field.defaultValue || '');
-            input.className = 'w-full text-xs';
+            let input;
             
-            inputForm.appendChild(label);
-            inputForm.appendChild(input);
-            
-            // Add autocomplete datalist if specified and schemas are loaded
+            // Use select dropdown for autocomplete if schemas are loaded
             if (field.autocomplete && areSchemasLoaded()) {
-              console.log(`Adding autocomplete for ${field.id}, type: ${field.autocomplete}`);
-              const datalistId = generateDatalistId();
-              input.setAttribute('list', datalistId);
+              console.log(`Adding autocomplete dropdown for ${field.id}, type: ${field.autocomplete}`);
               
-              const datalist = document.createElement('datalist');
-              datalist.id = datalistId;
+              input = document.createElement('select');
+              input.id = field.id;
+              input.className = 'w-full text-xs';
               
               let options = [];
               if (field.autocomplete === 'category') {
@@ -422,32 +411,71 @@ function createDropdownMenu(title, items) {
                 const categoryFilter = categoryInput ? categoryInput.value : null;
                 options = getUniquePropertyNames(categoryFilter);
                 console.log(`  Found ${options.length} unique properties`);
-                
-                // Update property options when category changes
+              }
+              
+              // Add a default "Select..." option
+              const defaultOption = document.createElement('option');
+              defaultOption.value = '';
+              defaultOption.textContent = field.placeholder || 'Select...';
+              input.appendChild(defaultOption);
+              
+              // Add all options
+              options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                input.appendChild(option);
+              });
+              
+              // Set default value if provided
+              const defaultValue = typeof field.defaultValue === 'function' 
+                ? field.defaultValue() 
+                : (field.defaultValue || '');
+              if (defaultValue && options.includes(defaultValue)) {
+                input.value = defaultValue;
+              }
+              
+              // For property dropdown, update when category changes
+              if (field.autocomplete === 'property') {
+                const categoryInput = inputForm.querySelector('#categoryName');
                 if (categoryInput) {
-                  categoryInput.addEventListener('input', () => {
+                  categoryInput.addEventListener('change', () => {
                     const newOptions = getUniquePropertyNames(categoryInput.value || null);
-                    datalist.innerHTML = '';
+                    input.innerHTML = '';
+                    
+                    const defaultOpt = document.createElement('option');
+                    defaultOpt.value = '';
+                    defaultOpt.textContent = field.placeholder || 'Select...';
+                    input.appendChild(defaultOpt);
+                    
                     newOptions.forEach(opt => {
                       const option = document.createElement('option');
                       option.value = opt;
-                      datalist.appendChild(option);
+                      option.textContent = opt;
+                      input.appendChild(option);
                     });
                     console.log(`  Property list updated: ${newOptions.length} options for category "${categoryInput.value}"`);
                   });
                 }
               }
+            } else {
+              // Regular text input (fallback when schemas not loaded)
+              input = document.createElement('input');
+              input.type = 'text';
+              input.id = field.id;
+              input.placeholder = field.placeholder || '';
+              input.value = typeof field.defaultValue === 'function' 
+                ? field.defaultValue() 
+                : (field.defaultValue || '');
+              input.className = 'w-full text-xs';
               
-              options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt;
-                datalist.appendChild(option);
-              });
-              
-              inputForm.appendChild(datalist);
-            } else if (field.autocomplete) {
-              console.log(`Autocomplete requested for ${field.id} but schemas not loaded yet`);
+              if (field.autocomplete) {
+                console.log(`Autocomplete requested for ${field.id} but schemas not loaded yet - using text input`);
+              }
             }
+            
+            inputForm.appendChild(label);
+            inputForm.appendChild(input);
             
             if (fieldIdx === 0) {
               mainInput = input; // First field is "main"
@@ -632,14 +660,24 @@ function createDropdownMenu(title, items) {
             // Refresh all multiText fields
             item.inputConfig.fields.forEach(field => {
               const input = inputForm.querySelector(`#${field.id}`);
-              if (input && input.tagName.toLowerCase() === 'input') {
-                if (input.type === 'checkbox') {
-                  input.checked = field.defaultValue || false;
-                } else {
-                  // Call function to get latest saved value
-                  input.value = typeof field.defaultValue === 'function' 
+              if (input) {
+                if (input.tagName.toLowerCase() === 'input') {
+                  if (input.type === 'checkbox') {
+                    input.checked = field.defaultValue || false;
+                  } else {
+                    // Call function to get latest saved value
+                    input.value = typeof field.defaultValue === 'function' 
+                      ? field.defaultValue() 
+                      : (field.defaultValue || '');
+                  }
+                } else if (input.tagName.toLowerCase() === 'select') {
+                  // For select elements, try to set the saved value
+                  const savedValue = typeof field.defaultValue === 'function' 
                     ? field.defaultValue() 
                     : (field.defaultValue || '');
+                  if (savedValue) {
+                    input.value = savedValue;
+                  }
                 }
               }
             });
