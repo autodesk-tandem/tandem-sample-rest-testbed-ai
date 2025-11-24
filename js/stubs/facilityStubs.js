@@ -1,245 +1,256 @@
 /**
  * Facility STUB Functions
  * 
- * EDUCATIONAL PURPOSE:
  * These STUB functions demonstrate how to call Tandem REST API endpoints.
- * They are intentionally simple and verbose to help developers understand:
- * - How to construct API URLs
- * - What headers are needed
- * - What the request/response looks like
- * 
- * All output goes to the browser console (F12 or Cmd+Option+I) so developers
- * can inspect the raw API responses and learn the data structures.
+ * Output goes to the browser console (F12 or Cmd+Option+I).
  */
 
-import { tandemBaseURL, makeRequestOptionsGET, logResponse } from '../api.js';
+import { tandemBaseURL, makeRequestOptionsGET } from '../api.js';
 
 /**
- * GET Facility Info
+ * Get the information about a given Facility.
  * 
- * API Endpoint: GET /twins/{facilityURN}
- * Returns: Complete facility information including properties, template, links to models, etc.
- * 
- * LEARN:
- * - This is one of the most basic Tandem API calls
- * - It returns metadata about a facility (not the 3D model data)
- * - The response includes Identity Data (building name, address, etc.)
- * - The "links" array contains URNs of all models in this facility
- * 
- * @param {string} facilityURN - Facility URN (e.g., 'urn:adsk.dtt:...')
- * @param {string} region - Region header ('US', 'EMEA', or 'AUS')
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @returns {Promise<void>}
  */
 export async function getFacilityInfo(facilityURN, region) {
-  console.group("🔍 STUB: getFacilityInfo()");
-  console.log("📋 Purpose: Get complete facility information");
-  console.log("📚 API Docs: https://aps.autodesk.com/en/docs/tandem/v1/reference/http/facilities-twins-id-GET/");
-  
-  // Step 1: Construct the API URL
+  console.group("STUB: getFacilityInfo()");
+
   const requestPath = `${tandemBaseURL}/twins/${facilityURN}`;
-  console.log("🌐 Request URL:", requestPath);
-  console.log("🗺️  Region:", region);
-  
-  // Step 2: Log what we're about to do
-  console.log("⚙️  Method: GET");
-  console.log("🔑 Auth: Bearer token (from session storage)");
-  
-  try {
-    // Step 3: Make the API call
-    console.log("📤 Sending request...");
-    const response = await fetch(requestPath, makeRequestOptionsGET(region));
-    
-    // Step 4: Check if request was successful
-    console.log("📥 Response status:", response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    // Step 5: Parse the JSON response
-    const data = await response.json();
-    
-    // Step 6: Log the response for educational inspection
-    console.log("✅ Success! API returned facility info:");
-    logResponse(data, "📦 Facility Data");
-    
-    // Step 7: Highlight key parts of the response
-    console.log("\n🔎 Key Information:");
-    console.log("  • Building Name:", data.props?.["Identity Data"]?.["Building Name"]);
-    console.log("  • Template:", data.template?.name || "None");
-    console.log("  • Schema Version:", data.schemaVersion);
-    console.log("  • Number of Models:", data.links?.length || 0);
-    console.log("  • Region:", data.region);
-    
-    // Step 8: Show model URNs if available
-    if (data.links && data.links.length > 0) {
-      console.log("\n📁 Models in this facility:");
-      data.links.forEach((link, index) => {
-        const isDefault = link.modelId.includes(':dtm:');
-        console.log(`  ${index + 1}. ${link.modelId} ${isDefault ? '(default model)' : ''}`);
-      });
-    }
-    
-  } catch (error) {
-    console.error("❌ Error:", error);
-    console.error("💡 Tip: Check the Network tab in DevTools for more details");
-  }
-  
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
   console.groupEnd();
 }
 
 /**
- * GET Facility Template
- * 
- * API Endpoint: GET /twins/{facilityURN}/template
- * Returns: The facility template information (classification system, parameters, etc.)
- * 
- * LEARN:
- * - Templates define the classification structure (like Uniformat)
- * - They also define custom parameters that can be used in the facility
- * - This is separate from the facility info call
+ * Get the template info about this Facility.
  * 
  * @param {string} facilityURN - Facility URN
  * @param {string} region - Region header
+ * @returns {Promise<void>}
  */
 export async function getFacilityTemplate(facilityURN, region) {
-  console.group("🔍 STUB: getFacilityTemplate()");
-  console.log("📋 Purpose: Get facility template (classification system & parameters)");
-  console.log("📚 API Docs: https://aps.autodesk.com/en/docs/tandem/v1/reference/http/facilities-twins-id-template-GET/");
-  
+  console.group("STUB: getFacilityTemplate()");
+
   const requestPath = `${tandemBaseURL}/twins/${facilityURN}/template`;
-  console.log("🌐 Request URL:", requestPath);
-  console.log("🗺️  Region:", region);
-  console.log("⚙️  Method: GET");
-  
-  try {
-    console.log("📤 Sending request...");
-    const response = await fetch(requestPath, makeRequestOptionsGET(region));
-    console.log("📥 Response status:", response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log("✅ Success! Template data:");
-    logResponse(data, "📦 Template Data");
-    
-    console.log("\n🔎 Template contains:");
-    console.log("  • Name:", data.name || "Unnamed");
-    console.log("  • Description:", data.desc || "No description");
-    console.log("  • Has Classifications:", !!data.classificationId);
-    console.log("  • Has Parameters:", !!data.parametersId);
-    
-  } catch (error) {
-    console.error("❌ Error:", error);
-  }
-  
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
   console.groupEnd();
 }
 
 /**
- * GET Facility Users
- * 
- * API Endpoint: GET /twins/{facilityURN}/users
- * Returns: List of users who have access to this facility and their permission levels
- * 
- * LEARN:
- * - Shows who has access to the facility
- * - Includes permission levels (admin, edit, view)
- * - Useful for understanding access control
+ * Get the user access levels for this Facility.
  * 
  * @param {string} facilityURN - Facility URN
  * @param {string} region - Region header
+ * @returns {Promise<void>}
  */
 export async function getFacilityUsers(facilityURN, region) {
-  console.group("🔍 STUB: getFacilityUsers()");
-  console.log("📋 Purpose: Get list of users with access to this facility");
-  
+  console.group("STUB: getFacilityUsers()");
+
   const requestPath = `${tandemBaseURL}/twins/${facilityURN}/users`;
-  console.log("🌐 Request URL:", requestPath);
-  console.log("🗺️  Region:", region);
-  console.log("⚙️  Method: GET");
-  
-  try {
-    console.log("📤 Sending request...");
-    const response = await fetch(requestPath, makeRequestOptionsGET(region));
-    console.log("📥 Response status:", response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log("✅ Success! Users data:");
-    logResponse(data, "📦 Users Data");
-    
-    if (Array.isArray(data) && data.length > 0) {
-      console.log("\n🔎 Access Summary:");
-      const accessCounts = data.reduce((acc, user) => {
-        acc[user.accessLevel] = (acc[user.accessLevel] || 0) + 1;
-        return acc;
-      }, {});
-      Object.entries(accessCounts).forEach(([level, count]) => {
-        console.log(`  • ${level}: ${count} user(s)`);
-      });
-    }
-    
-  } catch (error) {
-    console.error("❌ Error:", error);
-  }
-  
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
   console.groupEnd();
 }
 
 /**
- * GET Saved Views
- * 
- * API Endpoint: GET /twins/{facilityURN}/views
- * Returns: List of saved views (camera positions, element visibility, etc.)
- * 
- * LEARN:
- * - Saved views capture camera position, visible/hidden elements, etc.
- * - Each view has a UUID that can be used to retrieve it individually
- * - Views are created by users in the Tandem web application
+ * Get the inline template info about this Facility.
  * 
  * @param {string} facilityURN - Facility URN
  * @param {string} region - Region header
+ * @returns {Promise<void>}
+ */
+export async function getInlineTemplate(facilityURN, region) {
+  console.group("STUB: getInlineTemplate()");
+
+  const requestPath = `${tandemBaseURL}/twins/${facilityURN}/inlinetemplate`;
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
+  console.groupEnd();
+}
+
+/**
+ * Get the user accounts for this Facility.
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @returns {Promise<void>}
+ */
+export async function getSubjects(facilityURN, region) {
+  console.group("STUB: getSubjects()");
+
+  const requestPath = `${tandemBaseURL}/twins/${facilityURN}/subjects`;
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
+  console.groupEnd();
+}
+
+/**
+ * Get the user access levels for this Facility (for a specific user).
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @param {string} userID - User ID
+ * @returns {Promise<void>}
+ */
+export async function getFacilityUserAccessLevel(facilityURN, region, userID) {
+  console.group("STUB: getFacilityUserAccessLevel()");
+
+  const requestPath = `${tandemBaseURL}/twins/${facilityURN}/users/${userID}`;
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
+  console.groupEnd();
+}
+
+/**
+ * Get the thumbnail image for the given Facility and display in a new browser tab.
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @returns {Promise<void>}
+ */
+export async function getThumbnail(facilityURN, region) {
+  console.group("STUB: getThumbnail()");
+
+  const requestPath = `${tandemBaseURL}/twins/${facilityURN}/thumbnail`;
+  console.log(requestPath);
+
+  try {
+    const response = await fetch(requestPath, makeRequestOptionsGET(region));
+    if (response.ok) {
+      const blob = await response.blob();
+      console.log("Thumbnail image opening in new browser tab.");
+      let blobURL = URL.createObjectURL(blob, {type: blob.type});
+      window.open(blobURL);
+    } else {
+      console.log("ERROR: Couldn't retrieve thumbnail image.");
+    }
+  } catch (error) {
+    console.log('error', error);
+  }
+
+  console.groupEnd();
+}
+
+/**
+ * Call the TandemAppServer and get the Saved Views associated with the current facility.
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @returns {Promise<void>}
  */
 export async function getSavedViews(facilityURN, region) {
-  console.group("🔍 STUB: getSavedViews()");
-  console.log("📋 Purpose: Get list of saved views for this facility");
-  
+  console.group("STUB: getSavedViews()");
+
   const requestPath = `${tandemBaseURL}/twins/${facilityURN}/views`;
-  console.log("🌐 Request URL:", requestPath);
-  console.log("🗺️  Region:", region);
-  console.log("⚙️  Method: GET");
-  
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then(response => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
+  console.groupEnd();
+}
+
+/**
+ * Call the TandemAppServer and get the Saved View with the given ID.
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @param {string} viewUUID - View UUID
+ * @returns {Promise<void>}
+ */
+export async function getSavedViewByUUID(facilityURN, region, viewUUID) {
+  console.group("STUB: getSavedViewByUUID()");
+
+  const requestPath = `${tandemBaseURL}/twins/${facilityURN}/views/${viewUUID}`;
+  console.log(requestPath);
+
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then(response => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+
+  console.groupEnd();
+}
+
+/**
+ * Get the thumbnail image for the given View and display in a new browser tab.
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @param {string} viewUUID - View UUID
+ * @returns {Promise<void>}
+ */
+export async function getSavedViewThumbnail(facilityURN, region, viewUUID) {
+  console.group("STUB: getSavedViewThumbnail()");
+
+  const requestPath = `${tandemBaseURL}/twins/${facilityURN}/views/${viewUUID}/thumbnail`;
+  console.log(requestPath);
+
   try {
-    console.log("📤 Sending request...");
     const response = await fetch(requestPath, makeRequestOptionsGET(region));
-    console.log("📥 Response status:", response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log("✅ Success! Saved views:");
-    logResponse(data, "📦 Views Data");
-    
-    if (Array.isArray(data) && data.length > 0) {
-      console.log("\n🔎 Views Summary:");
-      data.forEach((view, index) => {
-        console.log(`  ${index + 1}. "${view.name || 'Unnamed'}" (UUID: ${view.id})`);
-      });
+    if (response.ok) {
+      const blob = await response.blob();
+      console.log("Thumbnail image opening in new browser tab.");
+      let blobURL = URL.createObjectURL(blob, {type: blob.type});
+      window.open(blobURL);
     } else {
-      console.log("  No saved views found");
+      console.log("ERROR: Couldn't retrieve thumbnail image.");
     }
-    
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.log('error', error);
   }
-  
+
   console.groupEnd();
 }
 

@@ -44,8 +44,20 @@ export function renderStubs(container, facilityURN, region) {
       action: () => facilityStubs.getFacilityTemplate(currentFacilityURN, currentFacilityRegion)
     },
     {
-      label: 'GET Facility Users',
+      label: 'GET Facility Inline Template',
+      action: () => facilityStubs.getInlineTemplate(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Facility Subjects',
+      action: () => facilityStubs.getSubjects(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET User Access Levels',
       action: () => facilityStubs.getFacilityUsers(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Facility Thumbnail',
+      action: () => facilityStubs.getThumbnail(currentFacilityURN, currentFacilityRegion)
     },
     {
       label: 'GET Saved Views',
