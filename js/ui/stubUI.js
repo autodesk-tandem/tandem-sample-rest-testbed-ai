@@ -20,6 +20,16 @@ let currentFacilityURN = null;
 let currentFacilityRegion = null;
 let currentModels = [];
 
+// Helper functions to remember last used input values
+function saveInputValue(key, value) {
+  sessionStorage.setItem(`stub_input_${key}`, value);
+}
+
+function getLastInputValue(key, defaultValue) {
+  const saved = sessionStorage.getItem(`stub_input_${key}`);
+  return saved !== null ? saved : defaultValue;
+}
+
 /**
  * Main function to render all STUB sections
  * 
@@ -155,17 +165,21 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'categoryName',
             type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
-            defaultValue: 'Identity Data'
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark, Comments',
-            defaultValue: 'Mark'
+            defaultValue: () => getLastInputValue('propName', 'Mark')
           }
         ],
-        onExecute: (values) => propertyStubs.getQualifiedProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName)
+        onExecute: (values) => {
+          saveInputValue('categoryName', values.categoryName);
+          saveInputValue('propName', values.propName);
+          return propertyStubs.getQualifiedProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName);
+        }
       }
     },
     {
@@ -179,14 +193,14 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'categoryName',
             type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
-            defaultValue: 'Identity Data'
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark, Comments',
-            defaultValue: 'Mark'
+            defaultValue: () => getLastInputValue('propName', 'Mark')
           },
           {
             label: 'Include History',
@@ -195,7 +209,11 @@ export async function renderStubs(container, facilityURN, region) {
             defaultValue: false
           }
         ],
-        onExecute: (values) => propertyStubs.scanForProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName, values.includeHistory)
+        onExecute: (values) => {
+          saveInputValue('categoryName', values.categoryName);
+          saveInputValue('propName', values.propName);
+          return propertyStubs.scanForProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName, values.includeHistory);
+        }
       }
     },
     {
@@ -213,21 +231,21 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'categoryName',
             type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
-            defaultValue: 'Identity Data'
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark, Comments',
-            defaultValue: 'Mark'
+            defaultValue: () => getLastInputValue('propName', 'Mark')
           },
           {
             label: 'Match String',
             id: 'matchStr',
             type: 'text',
             placeholder: 'e.g., Basic Wall or ^Concrete',
-            defaultValue: ''
+            defaultValue: () => getLastInputValue('matchStr', '')
           },
           {
             label: 'Is Javascript RegEx?',
@@ -242,15 +260,21 @@ export async function renderStubs(container, facilityURN, region) {
             defaultValue: false
           }
         ],
-        onExecute: (values) => propertyStubs.findElementsWherePropValueEquals(
-          currentFacilityURN, 
-          currentFacilityRegion, 
-          values.categoryName, 
-          values.propName, 
-          values.matchStr,
-          values.isRegEx,
-          values.isCaseInsensitive
-        )
+        showRegexHelp: true, // Flag to show regex help
+        onExecute: (values) => {
+          saveInputValue('categoryName', values.categoryName);
+          saveInputValue('propName', values.propName);
+          saveInputValue('matchStr', values.matchStr);
+          return propertyStubs.findElementsWherePropValueEquals(
+            currentFacilityURN, 
+            currentFacilityRegion, 
+            values.categoryName, 
+            values.propName, 
+            values.matchStr,
+            values.isRegEx,
+            values.isCaseInsensitive
+          );
+        }
       }
     }
   ]);
@@ -358,7 +382,9 @@ function createDropdownMenu(title, items) {
             input.type = 'text';
             input.id = field.id;
             input.placeholder = field.placeholder || '';
-            input.value = field.defaultValue || '';
+            input.value = typeof field.defaultValue === 'function' 
+              ? field.defaultValue() 
+              : (field.defaultValue || '');
             input.className = 'w-full text-xs';
             
             inputForm.appendChild(label);
@@ -432,6 +458,47 @@ function createDropdownMenu(title, items) {
             additionalInputs.push(input);
           });
         }
+      }
+      
+      // Add regex help if specified
+      if (item.inputConfig.showRegexHelp) {
+        const helpSection = document.createElement('div');
+        helpSection.style.marginTop = '0.75rem';
+        helpSection.style.padding = '0.5rem';
+        helpSection.style.background = '#2a2a2a';
+        helpSection.style.borderRadius = '0.25rem';
+        helpSection.style.fontSize = '0.65rem';
+        helpSection.style.lineHeight = '1.3';
+        
+        const helpTitle = document.createElement('div');
+        helpTitle.style.fontWeight = 'bold';
+        helpTitle.style.marginBottom = '0.25rem';
+        helpTitle.style.color = '#9ca3af';
+        helpTitle.textContent = '💡 RegEx Pattern Examples:';
+        
+        const helpTable = document.createElement('div');
+        helpTable.style.fontFamily = 'monospace';
+        helpTable.style.color = '#d1d5db';
+        helpTable.innerHTML = `
+          <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.5rem; margin-top: 0.25rem;">
+            <span style="color: #10b981;">49ers</span>
+            <span>Contains "49ers" anywhere</span>
+            <span style="color: #10b981;">^49ers</span>
+            <span>Starts with "49ers"</span>
+            <span style="color: #10b981;">49ers$</span>
+            <span>Ends with "49ers"</span>
+            <span style="color: #10b981;">49ers.*win</span>
+            <span>"49ers" then "win"</span>
+            <span style="color: #10b981;">49ers|raiders</span>
+            <span>"49ers" OR "raiders"</span>
+            <span style="color: #10b981;">^Concrete</span>
+            <span>Starts with "Concrete"</span>
+          </div>
+        `;
+        
+        helpSection.appendChild(helpTitle);
+        helpSection.appendChild(helpTable);
+        inputForm.appendChild(helpSection);
       }
       
       // Button container
@@ -509,7 +576,10 @@ function createDropdownMenu(title, items) {
                 if (input.type === 'checkbox') {
                   input.checked = field.defaultValue || false;
                 } else {
-                  input.value = field.defaultValue || '';
+                  // Call function to get latest saved value
+                  input.value = typeof field.defaultValue === 'function' 
+                    ? field.defaultValue() 
+                    : (field.defaultValue || '');
                 }
               }
             });
