@@ -1,19 +1,23 @@
-import { tandemBaseURL, makeRequestOptionsGET, makeRequestOptionsPOST, showResult, getCurrentFacility } from '../api.js';
+import { tandemBaseURL, makeRequestOptionsGET, makeRequestOptionsPOST } from '../api.js';
 
 /**
  * Get the schema for a specific model, then search for a qualified property by category and name
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @param {string} categoryName - Property category name
+ * @param {string} propName - Property name
+ * @returns {Promise<void>}
  */
-export async function getQualifiedProperty(categoryName, propName) {
+export async function getQualifiedProperty(facilityURN, region, categoryName, propName) {
   console.group("STUB: getQualifiedProperty()");
-  
-  const facilityURN = getCurrentFacility();
   
   // Get list of models for this facility
   const facilityPath = `${tandemBaseURL}/twins/${facilityURN}`;
   console.log(facilityPath);
   
   try {
-    const facilityResponse = await fetch(facilityPath, makeRequestOptionsGET());
+    const facilityResponse = await fetch(facilityPath, makeRequestOptionsGET(region));
     const facilityData = await facilityResponse.json();
     const models = facilityData.links || [];
     
@@ -30,7 +34,7 @@ export async function getQualifiedProperty(categoryName, propName) {
       const schemaPath = `${tandemBaseURL}/modeldata/${modelURN}/schema`;
       console.log(schemaPath);
       
-      const schemaResponse = await fetch(schemaPath, makeRequestOptionsGET());
+      const schemaResponse = await fetch(schemaPath, makeRequestOptionsGET(region));
       const schema = await schemaResponse.json();
       
       // Search for the qualified property
@@ -67,16 +71,20 @@ export async function getQualifiedProperty(categoryName, propName) {
 
 /**
  * Scan for all user-defined properties (DtProperties family = "z")
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @returns {Promise<void>}
  */
-export async function scanForUserProps() {
+export async function scanForUserProps(facilityURN, region) {
   console.group("STUB: scanForUserProps()");
-  
-  const facilityURN = getCurrentFacility();
   
   try {
     // Get list of models for this facility
     const facilityPath = `${tandemBaseURL}/twins/${facilityURN}`;
-    const facilityResponse = await fetch(facilityPath, makeRequestOptionsGET());
+    console.log(facilityPath);
+    
+    const facilityResponse = await fetch(facilityPath, makeRequestOptionsGET(region));
     const facilityData = await facilityResponse.json();
     const models = facilityData.links || [];
     
@@ -96,9 +104,9 @@ export async function scanForUserProps() {
       const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
       console.log(requestPath);
       
-      const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload));
+      const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
       const obj = await response.json();
-      showResult(obj);
+      console.log("Result from Tandem DB Server -->", obj);
       
       console.groupEnd();
     }

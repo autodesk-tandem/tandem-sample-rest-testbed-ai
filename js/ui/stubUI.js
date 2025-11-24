@@ -163,12 +163,12 @@ export async function renderStubs(container, facilityURN, region) {
             defaultValue: 'Mark'
           }
         ],
-        onExecute: (values) => propertyStubs.getQualifiedProperty(values.categoryName, values.propName)
+        onExecute: (values) => propertyStubs.getQualifiedProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName)
       }
     },
     {
       label: 'SCAN for User Props',
-      action: () => propertyStubs.scanForUserProps()
+      action: () => propertyStubs.scanForUserProps(currentFacilityURN, currentFacilityRegion)
     }
   ]);
   
