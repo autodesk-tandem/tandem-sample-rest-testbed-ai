@@ -309,15 +309,21 @@ export async function findElementsWherePropValueEquals(facilityURN, region, cate
           // Now filter based on match criteria
           let matchingProps = null;
           if (isRegEx) {
-            let regEx = null;
-            if (isCaseInsensitive) {
-              regEx = new RegExp(matchStr, "i");
-            } else {
-              regEx = new RegExp(matchStr);
+            try {
+              let regEx = null;
+              if (isCaseInsensitive) {
+                regEx = new RegExp(matchStr, "i");
+              } else {
+                regEx = new RegExp(matchStr);
+              }
+              
+              console.log("Doing RegularExpression match for:", regEx);
+              matchingProps = propValues.filter(prop => regEx.test(prop.value));
+            } catch (error) {
+              console.error(`Invalid regular expression: "${matchStr}"`, error.message);
+              console.log("TIP: Uncheck 'Is Javascript RegEx?' for literal string matching, or escape special characters in your regex pattern.");
+              matchingProps = [];
             }
-            
-            console.log("Doing RegularExpression match for:", regEx);
-            matchingProps = propValues.filter(prop => regEx.test(prop.value));
           } else {
             if (isCaseInsensitive) {
               console.log(`Doing case insensitive match for: "${matchStr}..."`);
