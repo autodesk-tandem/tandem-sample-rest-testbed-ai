@@ -27,7 +27,6 @@ const facilitySelect = document.getElementById('facilitySelect');
 const welcomeMessage = document.getElementById('welcomeMessage');
 const dashboardContent = document.getElementById('dashboardContent');
 const loadingOverlay = document.getElementById('loadingOverlay');
-const facilityInfo = document.getElementById('facilityInfo');
 const stubsContainer = document.getElementById('stubsContainer');
 const facilityThumbnail = document.getElementById('facilityThumbnail');
 const thumbnailPlaceholder = document.getElementById('thumbnailPlaceholder');
@@ -348,42 +347,11 @@ async function loadFacility(facilityURN) {
       thumbnailPlaceholder.classList.remove('hidden');
     }
     
-    if (info) {
-      const buildingName = info.props?.["Identity Data"]?.["Building Name"] || "Unknown";
-      const location = info.props?.["Identity Data"]?.["Address"] || null;
-      const regionInfo = info.region || null;
-      
-      facilityInfo.innerHTML = `
-        <div class="space-y-1">
-          <div>
-            <span class="font-medium text-dark-text">Building:</span>
-            <span class="text-dark-text-secondary ml-2">${buildingName}</span>
-          </div>
-          ${location ? `
-          <div>
-            <span class="font-medium text-dark-text">Location:</span>
-            <span class="text-dark-text-secondary ml-2">${location}</span>
-          </div>
-          ` : ''}
-          ${regionInfo ? `
-          <div>
-            <span class="font-medium text-dark-text">Region:</span>
-            <span class="text-dark-text-secondary ml-2">${regionInfo}</span>
-          </div>
-          ` : ''}
-          <div class="pt-1">
-            <span class="font-medium text-dark-text">URN:</span>
-            <div class="text-dark-text-secondary font-mono text-[10px] break-all mt-1">${facilityURN}</div>
-          </div>
-        </div>
-      `;
-      
-      // Render STUB functions UI
-      await renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
-    }
+    // Render STUB functions UI
+    await renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
   } catch (error) {
     console.error('Error loading facility:', error);
-    facilityInfo.innerHTML = `<p class="text-red-600">Error loading facility information</p>`;
+    stubsContainer.innerHTML = `<p class="text-red-600 text-sm p-4">Error loading facility information</p>`;
   } finally {
     toggleLoading(false);
   }
@@ -439,7 +407,7 @@ async function initialize() {
     if (accounts && accounts.length > 0) {
       await populateAccountsDropdown(accounts);
     } else {
-      facilityInfo.innerHTML = '<p class="text-red-600">No accounts or facilities found. Please ensure you have access to at least one Tandem facility.</p>';
+      stubsContainer.innerHTML = '<p class="text-red-600 text-sm p-4">No accounts or facilities found. Please ensure you have access to at least one Tandem facility.</p>';
     }
   } else {
     updateUIForLoginState(false, null);

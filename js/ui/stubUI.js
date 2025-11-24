@@ -206,9 +206,9 @@ function createDropdownMenu(title, items) {
         mainInput = document.createElement('select');
         mainInput.className = 'w-full text-xs';
         
-        // Populate with models
+        // Populate with models (in API order)
         const defaultModelURN = getDefaultModelURN(currentFacilityURN);
-        currentModels.forEach(model => {
+        currentModels.forEach((model, index) => {
           const option = document.createElement('option');
           option.value = model.modelId;
           
@@ -218,8 +218,8 @@ function createDropdownMenu(title, items) {
           // Show both name and URN for developer visibility
           option.textContent = `${displayName} - ${model.modelId}`;
           
-          // Pre-select the default model
-          if (isDefault) {
+          // Pre-select the first model in the list
+          if (index === 0) {
             option.selected = true;
           }
           

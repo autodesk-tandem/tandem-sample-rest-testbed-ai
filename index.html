@@ -347,44 +347,39 @@
         <!-- Dashboard Content (shown when logged in) -->
         <div id="dashboardContent" class="hidden flex-1 flex" style="height: calc(100vh - 56px);">
             <!-- Left Side: Viewer / Thumbnail Area -->
-            <div class="flex-1 relative bg-dark-bg flex items-center justify-center">
-                <img id="facilityThumbnail" 
-                     src="" 
-                     alt="Facility Thumbnail" 
-                     class="hidden max-w-full max-h-full object-contain"
-                     style="max-height: calc(100vh - 120px);">
-                <div id="thumbnailPlaceholder" class="text-center text-dark-text-secondary">
-                    <svg class="w-24 h-24 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <p class="text-sm">Select a facility to view</p>
+            <div class="flex-1 relative bg-dark-bg flex flex-col">
+                <!-- Thumbnail/Viewer Area -->
+                <div class="flex-1 flex items-center justify-center p-4">
+                    <img id="facilityThumbnail" 
+                         src="" 
+                         alt="Facility Thumbnail" 
+                         class="hidden max-w-full max-h-full object-contain"
+                         style="max-height: calc(100vh - 200px);">
+                    <div id="thumbnailPlaceholder" class="text-center text-dark-text-secondary">
+                        <svg class="w-24 h-24 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-sm">Select a facility to view</p>
+                    </div>
+                </div>
+                
+                <!-- Console Reminder (moved to left side) -->
+                <div class="p-4 bg-yellow-900/20 border-t border-yellow-700/50">
+                    <div class="flex items-start space-x-3">
+                        <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <p class="text-sm text-yellow-200">
+                                <strong>Developer Mode:</strong> Open Chrome DevTools (F12 or Cmd+Option+I) to see API output.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Right Side: STUB Functions Panel -->
             <div class="w-96 bg-dark-card border-l border-dark-border overflow-y-auto">
-                <!-- Facility Info Header -->
-                <div class="p-4 border-b border-dark-border">
-                    <h2 class="text-xs font-semibold text-dark-text mb-2">Selected Facility</h2>
-                    <div id="facilityInfo" class="text-dark-text-secondary text-xs">
-                        <p>Select a facility to begin...</p>
-                    </div>
-                </div>
-
-                <!-- Console Reminder -->
-                <div class="p-4 bg-yellow-900/20 border-b border-yellow-700/50">
-                    <div class="flex items-start space-x-2">
-                        <svg class="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <div>
-                            <p class="text-xs text-yellow-200">
-                                <strong>Developer Mode:</strong> Open Chrome DevTools (F12) to see API output.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- STUB Functions Dropdown Menus -->
                 <div id="stubsContainer" class="p-4">
                     <!-- Dropdowns will be rendered here -->
