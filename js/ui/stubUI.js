@@ -14,6 +14,7 @@ import * as facilityStubs from '../stubs/facilityStubs.js';
 import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
+import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded } from '../state/schemaCache.js';
 
 // Store current facility context for STUB functions
 let currentFacilityURN = null;
@@ -28,6 +29,12 @@ function saveInputValue(key, value) {
 function getLastInputValue(key, defaultValue) {
   const saved = sessionStorage.getItem(`stub_input_${key}`);
   return saved !== null ? saved : defaultValue;
+}
+
+// Generate unique ID for datalist elements
+let datalistIdCounter = 0;
+function generateDatalistId() {
+  return `datalist-${Date.now()}-${datalistIdCounter++}`;
 }
 
 /**
@@ -165,14 +172,16 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'categoryName',
             type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
-            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data'),
+            autocomplete: 'category'
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark, Comments',
-            defaultValue: () => getLastInputValue('propName', 'Mark')
+            defaultValue: () => getLastInputValue('propName', 'Mark'),
+            autocomplete: 'property'
           }
         ],
         onExecute: (values) => {
@@ -193,14 +202,16 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'categoryName',
             type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
-            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data'),
+            autocomplete: 'category'
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark, Comments',
-            defaultValue: () => getLastInputValue('propName', 'Mark')
+            defaultValue: () => getLastInputValue('propName', 'Mark'),
+            autocomplete: 'property'
           },
           {
             label: 'Include History',
@@ -231,14 +242,16 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'categoryName',
             type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
-            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data'),
+            autocomplete: 'category'
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark, Comments',
-            defaultValue: () => getLastInputValue('propName', 'Mark')
+            defaultValue: () => getLastInputValue('propName', 'Mark'),
+            autocomplete: 'property'
           },
           {
             label: 'Match String',
@@ -386,6 +399,46 @@ function createDropdownMenu(title, items) {
               ? field.defaultValue() 
               : (field.defaultValue || '');
             input.className = 'w-full text-xs';
+            
+            // Add autocomplete datalist if specified and schemas are loaded
+            if (field.autocomplete && areSchemasLoaded()) {
+              const datalistId = generateDatalistId();
+              input.setAttribute('list', datalistId);
+              
+              const datalist = document.createElement('datalist');
+              datalist.id = datalistId;
+              
+              let options = [];
+              if (field.autocomplete === 'category') {
+                options = getUniqueCategoryNames();
+              } else if (field.autocomplete === 'property') {
+                // Get properties, optionally filtered by category
+                const categoryInput = inputForm.querySelector('#categoryName');
+                const categoryFilter = categoryInput ? categoryInput.value : null;
+                options = getUniquePropertyNames(categoryFilter);
+                
+                // Update property options when category changes
+                if (categoryInput) {
+                  categoryInput.addEventListener('input', () => {
+                    const newOptions = getUniquePropertyNames(categoryInput.value || null);
+                    datalist.innerHTML = '';
+                    newOptions.forEach(opt => {
+                      const option = document.createElement('option');
+                      option.value = opt;
+                      datalist.appendChild(option);
+                    });
+                  });
+                }
+              }
+              
+              options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                datalist.appendChild(option);
+              });
+              
+              inputForm.appendChild(datalist);
+            }
             
             inputForm.appendChild(label);
             inputForm.appendChild(input);

@@ -16,6 +16,7 @@ import {
 } from './api.js';
 import { RegionLabelMap } from '../tandem/constants.js';
 import { renderStubs } from './ui/stubUI.js';
+import { loadSchemasForFacility, clearSchemaCache } from './state/schemaCache.js';
 
 // DOM Elements
 const loginBtn = document.getElementById('loginBtn');
@@ -321,6 +322,12 @@ async function loadFacility(facilityURN) {
   if (currentFacilityURN === facilityURN) {
     return; // Already loaded
   }
+  
+  // Clear previous facility's schema cache
+  if (currentFacilityURN) {
+    clearSchemaCache();
+  }
+  
   currentFacilityURN = facilityURN;
   
   // Get region from cache (instant lookup, no API call needed!)
@@ -345,6 +352,12 @@ async function loadFacility(facilityURN) {
     } else {
       facilityThumbnail.classList.add('hidden');
       thumbnailPlaceholder.classList.remove('hidden');
+    }
+    
+    // Load schemas for all models (for autocomplete)
+    const models = info?.links || [];
+    if (models.length > 0) {
+      await loadSchemasForFacility(models, currentFacilityRegion);
     }
     
     // Render STUB functions UI
