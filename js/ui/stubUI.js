@@ -12,6 +12,7 @@
 
 import * as facilityStubs from '../stubs/facilityStubs.js';
 import * as modelStubs from '../stubs/modelStubs.js';
+import * as propertyStubs from '../stubs/propertyStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
 
 // Store current facility context for STUB functions
@@ -141,6 +142,38 @@ export async function renderStubs(container, facilityURN, region) {
   
   container.appendChild(modelDropdown);
   
+  // Create Property Stubs Dropdown
+  const propertyDropdown = createDropdownMenu('Property Stubs', [
+    {
+      label: 'GET Qualified Property',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Category Name',
+            id: 'categoryName',
+            placeholder: 'e.g., Identity Data, Dimensions',
+            defaultValue: 'Identity Data'
+          },
+          {
+            label: 'Property Name',
+            id: 'propName',
+            placeholder: 'e.g., Mark, Comments',
+            defaultValue: 'Mark'
+          }
+        ],
+        onExecute: (values) => propertyStubs.getQualifiedProperty(values.categoryName, values.propName)
+      }
+    },
+    {
+      label: 'SCAN for User Props',
+      action: () => propertyStubs.scanForUserProps()
+    }
+  ]);
+  
+  container.appendChild(propertyDropdown);
+  
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
   helpDiv.className = 'mt-4 p-3 bg-dark-bg border border-dark-border rounded text-xs text-dark-text-secondary';
@@ -196,67 +229,94 @@ function createDropdownMenu(title, items) {
       inputForm.style.margin = '0.375rem';
       inputForm.style.marginTop = '0';
       
-      // Main input field (text input or model selector)
-      const mainLabel = document.createElement('label');
-      mainLabel.textContent = item.inputConfig.label;
-      
       let mainInput;
-      if (item.inputConfig.type === 'modelSelect') {
-        // Create a dropdown for model selection
-        mainInput = document.createElement('select');
-        mainInput.className = 'w-full text-xs';
-        
-        // Populate with models (in API order)
-        const defaultModelURN = getDefaultModelURN(currentFacilityURN);
-        currentModels.forEach((model, index) => {
-          const option = document.createElement('option');
-          option.value = model.modelId;
-          
-          const isDefault = model.modelId === defaultModelURN;
-          const displayName = model.label || (isDefault ? '** Default Model **' : 'Untitled Model');
-          
-          // Show both name and URN for developer visibility
-          option.textContent = `${displayName} - ${model.modelId}`;
-          
-          // Pre-select the first model in the list
-          if (index === 0) {
-            option.selected = true;
-          }
-          
-          mainInput.appendChild(option);
-        });
-      } else {
-        // Regular text input
-        mainInput = document.createElement('input');
-        mainInput.type = 'text';
-        mainInput.placeholder = item.inputConfig.placeholder;
-        mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
-          ? item.inputConfig.defaultValue() 
-          : item.inputConfig.defaultValue;
-        mainInput.className = 'w-full text-xs';
-      }
-      
-      inputForm.appendChild(mainLabel);
-      inputForm.appendChild(mainInput);
-      
-      // Additional fields if specified
       const additionalInputs = [];
-      if (item.inputConfig.additionalFields) {
-        item.inputConfig.additionalFields.forEach(field => {
+      
+      // Handle different input types
+      if (item.inputConfig.type === 'multiText') {
+        // Multiple text fields (e.g., Category Name + Property Name)
+        item.inputConfig.fields.forEach((field, fieldIdx) => {
           const label = document.createElement('label');
           label.textContent = field.label;
-          label.style.marginTop = '0.5rem';
+          if (fieldIdx > 0) label.style.marginTop = '0.5rem';
           
           const input = document.createElement('input');
           input.type = 'text';
-          input.placeholder = field.placeholder;
+          input.id = field.id;
+          input.placeholder = field.placeholder || '';
           input.value = field.defaultValue || '';
           input.className = 'w-full text-xs';
           
           inputForm.appendChild(label);
           inputForm.appendChild(input);
-          additionalInputs.push(input);
+          
+          if (fieldIdx === 0) {
+            mainInput = input; // First field is "main"
+          } else {
+            additionalInputs.push(input);
+          }
         });
+      } else {
+        // Single field (model selector or text input)
+        const mainLabel = document.createElement('label');
+        mainLabel.textContent = item.inputConfig.label;
+        
+        if (item.inputConfig.type === 'modelSelect') {
+          // Create a dropdown for model selection
+          mainInput = document.createElement('select');
+          mainInput.className = 'w-full text-xs';
+          
+          // Populate with models (in API order)
+          const defaultModelURN = getDefaultModelURN(currentFacilityURN);
+          currentModels.forEach((model, index) => {
+            const option = document.createElement('option');
+            option.value = model.modelId;
+            
+            const isDefault = model.modelId === defaultModelURN;
+            const displayName = model.label || (isDefault ? '** Default Model **' : 'Untitled Model');
+            
+            // Show both name and URN for developer visibility
+            option.textContent = `${displayName} - ${model.modelId}`;
+            
+            // Pre-select the first model in the list
+            if (index === 0) {
+              option.selected = true;
+            }
+            
+            mainInput.appendChild(option);
+          });
+        } else {
+          // Regular text input
+          mainInput = document.createElement('input');
+          mainInput.type = 'text';
+          mainInput.placeholder = item.inputConfig.placeholder;
+          mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
+            ? item.inputConfig.defaultValue() 
+            : item.inputConfig.defaultValue;
+          mainInput.className = 'w-full text-xs';
+        }
+        
+        inputForm.appendChild(mainLabel);
+        inputForm.appendChild(mainInput);
+        
+        // Additional fields if specified
+        if (item.inputConfig.additionalFields) {
+          item.inputConfig.additionalFields.forEach(field => {
+            const label = document.createElement('label');
+            label.textContent = field.label;
+            label.style.marginTop = '0.5rem';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = field.placeholder;
+            input.value = field.defaultValue || '';
+            input.className = 'w-full text-xs';
+            
+            inputForm.appendChild(label);
+            inputForm.appendChild(input);
+            additionalInputs.push(input);
+          });
+        }
       }
       
       // Button container
@@ -282,8 +342,21 @@ function createDropdownMenu(title, items) {
         
         try {
           // Gather all input values
-          const values = [mainInput.value, ...additionalInputs.map(inp => inp.value)];
-          await item.inputConfig.onExecute(...values);
+          if (item.inputConfig.type === 'multiText') {
+            // For multiText, gather values by field ID
+            const values = {};
+            item.inputConfig.fields.forEach(field => {
+              const input = inputForm.querySelector(`#${field.id}`);
+              if (input) {
+                values[field.id] = input.value;
+              }
+            });
+            await item.inputConfig.onExecute(values);
+          } else {
+            // For single field + additional fields, pass as array
+            const values = [mainInput.value, ...additionalInputs.map(inp => inp.value)];
+            await item.inputConfig.onExecute(...values);
+          }
           
           // Collapse form after success
           inputForm.classList.add('hidden');
@@ -306,12 +379,23 @@ function createDropdownMenu(title, items) {
       // Button click toggles form visibility
       button.addEventListener('click', () => {
         inputForm.classList.toggle('hidden');
-        // Refresh default value when opening (for text inputs only, not selects)
-        if (!inputForm.classList.contains('hidden') && item.inputConfig.type !== 'modelSelect') {
-          if (mainInput.tagName.toLowerCase() === 'input') {
-            mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
-              ? item.inputConfig.defaultValue() 
-              : item.inputConfig.defaultValue;
+        // Refresh default values when opening (for text inputs only, not selects)
+        if (!inputForm.classList.contains('hidden')) {
+          if (item.inputConfig.type === 'multiText') {
+            // Refresh all multiText fields
+            item.inputConfig.fields.forEach(field => {
+              const input = inputForm.querySelector(`#${field.id}`);
+              if (input && input.tagName.toLowerCase() === 'input') {
+                input.value = field.defaultValue || '';
+              }
+            });
+          } else if (item.inputConfig.type !== 'modelSelect') {
+            // Refresh single text input
+            if (mainInput.tagName.toLowerCase() === 'input') {
+              mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
+                ? item.inputConfig.defaultValue() 
+                : item.inputConfig.defaultValue;
+            }
           }
         }
       });
