@@ -481,18 +481,19 @@ function createDropdownMenu(title, items) {
         helpTable.style.color = '#d1d5db';
         helpTable.innerHTML = `
           <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.5rem; margin-top: 0.25rem;">
-            <span style="color: #10b981;">49ers</span>
-            <span>Contains "49ers" anywhere</span>
-            <span style="color: #10b981;">^49ers</span>
-            <span>Starts with "49ers"</span>
-            <span style="color: #10b981;">49ers$</span>
-            <span>Ends with "49ers"</span>
-            <span style="color: #10b981;">49ers.*win</span>
-            <span>"49ers" then "win"</span>
-            <span style="color: #10b981;">49ers|raiders</span>
-            <span>"49ers" OR "raiders"</span>
+            <span style="color: #10b981;">Concrete</span>
+            <span>Contains "Concrete" anywhere</span>
             <span style="color: #10b981;">^Concrete</span>
             <span>Starts with "Concrete"</span>
+            <span style="color: #10b981;">Steel$</span>
+            <span>Ends with "Steel"</span>
+            <span style="color: #10b981;">Concrete.*Wall</span>
+            <span>"Concrete" then "Wall"</span>
+            <span style="color: #10b981;">Concrete|Steel</span>
+            <span>"Concrete" OR "Steel"</span>
+          </div>
+          <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #404040; color: #9ca3af;">
+            <strong>💡 Tip:</strong> For exact match, uncheck "Is Javascript RegEx?"
           </div>
         `;
         
