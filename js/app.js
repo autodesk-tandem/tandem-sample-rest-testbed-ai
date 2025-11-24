@@ -29,6 +29,8 @@ const dashboardContent = document.getElementById('dashboardContent');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const facilityInfo = document.getElementById('facilityInfo');
 const stubsContainer = document.getElementById('stubsContainer');
+const facilityThumbnail = document.getElementById('facilityThumbnail');
+const thumbnailPlaceholder = document.getElementById('thumbnailPlaceholder');
 
 // State
 let accounts = [];
@@ -335,9 +337,15 @@ async function loadFacility(facilityURN) {
       getFacilityThumbnail(facilityURN, currentFacilityRegion)
     ]);
     
-    // Register thumbnail URL for cleanup
+    // Display thumbnail in viewer area
     if (thumbnailUrl) {
       registerThumbnailURL(thumbnailUrl);
+      facilityThumbnail.src = thumbnailUrl;
+      facilityThumbnail.classList.remove('hidden');
+      thumbnailPlaceholder.classList.add('hidden');
+    } else {
+      facilityThumbnail.classList.add('hidden');
+      thumbnailPlaceholder.classList.remove('hidden');
     }
     
     if (info) {
@@ -346,35 +354,26 @@ async function loadFacility(facilityURN) {
       const regionInfo = info.region || null;
       
       facilityInfo.innerHTML = `
-        <div class="flex flex-col md:flex-row gap-4">
-          ${thumbnailUrl ? `
-          <div class="flex-shrink-0">
-            <img src="${thumbnailUrl}" 
-                 alt="Facility Thumbnail" 
-                 class="w-full md:w-48 h-32 object-cover rounded border border-dark-border">
+        <div class="space-y-1">
+          <div>
+            <span class="font-medium text-dark-text">Building:</span>
+            <span class="text-dark-text-secondary ml-2">${buildingName}</span>
+          </div>
+          ${location ? `
+          <div>
+            <span class="font-medium text-dark-text">Location:</span>
+            <span class="text-dark-text-secondary ml-2">${location}</span>
           </div>
           ` : ''}
-          <div class="flex-grow space-y-1">
-            <div>
-              <span class="font-medium text-dark-text text-xs">Building:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs">${buildingName}</span>
-            </div>
-            ${location ? `
-            <div>
-              <span class="font-medium text-dark-text text-xs">Location:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs">${location}</span>
-            </div>
-            ` : ''}
-            ${regionInfo ? `
-            <div>
-              <span class="font-medium text-dark-text text-xs">Region:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs">${regionInfo}</span>
-            </div>
-            ` : ''}
-            <div>
-              <span class="font-medium text-dark-text text-xs">URN:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs font-mono break-all">${facilityURN}</span>
-            </div>
+          ${regionInfo ? `
+          <div>
+            <span class="font-medium text-dark-text">Region:</span>
+            <span class="text-dark-text-secondary ml-2">${regionInfo}</span>
+          </div>
+          ` : ''}
+          <div class="pt-1">
+            <span class="font-medium text-dark-text">URN:</span>
+            <div class="text-dark-text-secondary font-mono text-[10px] break-all mt-1">${facilityURN}</div>
           </div>
         </div>
       `;

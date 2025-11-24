@@ -20,7 +20,7 @@ let currentFacilityRegion = null;
  * Main function to render all STUB sections
  * 
  * This is called when a facility is selected. It renders all available
- * STUB functions organized by category.
+ * STUB functions organized by category in dropdown menus.
  * 
  * @param {HTMLElement} container - DOM container for stubs
  * @param {string} facilityURN - Current facility URN
@@ -33,117 +33,100 @@ export function renderStubs(container, facilityURN, region) {
   
   container.innerHTML = '';
   
-  // Render Facility stubs section
-  const facilitySection = createStubCategory(
-    'Facility API Endpoints',
-    'Information about the facility, users, templates, and saved views'
-  );
+  // Create Facility Stubs Dropdown
+  const facilityDropdown = createDropdownMenu('Facility Stubs', [
+    {
+      label: 'GET Facility Info',
+      action: () => facilityStubs.getFacilityInfo(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Facility Template',
+      action: () => facilityStubs.getFacilityTemplate(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Facility Users',
+      action: () => facilityStubs.getFacilityUsers(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Saved Views',
+      action: () => facilityStubs.getSavedViews(currentFacilityURN, currentFacilityRegion)
+    }
+  ]);
   
-  // Add facility stub buttons
-  facilitySection.appendChild(createStubButton(
-    'GET Facility Info',
-    'Get complete facility information including properties and models',
-    () => facilityStubs.getFacilityInfo(currentFacilityURN, currentFacilityRegion)
-  ));
-  
-  facilitySection.appendChild(createStubButton(
-    'GET Facility Template',
-    'Get facility template with classification and parameters',
-    () => facilityStubs.getFacilityTemplate(currentFacilityURN, currentFacilityRegion)
-  ));
-  
-  facilitySection.appendChild(createStubButton(
-    'GET Facility Users',
-    'Get list of users with access to this facility',
-    () => facilityStubs.getFacilityUsers(currentFacilityURN, currentFacilityRegion)
-  ));
-  
-  facilitySection.appendChild(createStubButton(
-    'GET Saved Views',
-    'Get list of saved views (camera positions, visibility)',
-    () => facilityStubs.getSavedViews(currentFacilityURN, currentFacilityRegion)
-  ));
-  
-  container.appendChild(facilitySection);
+  container.appendChild(facilityDropdown);
   
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
   helpDiv.className = 'mt-4 p-3 bg-dark-bg border border-dark-border rounded text-xs text-dark-text-secondary';
   helpDiv.innerHTML = `
     <strong class="text-dark-text">💡 Developer Tips:</strong><br>
-    • Open Chrome DevTools (F12 or Cmd+Option+I) to see API requests and responses<br>
-    • Click any button above to execute that API call<br>
-    • All output is logged to the console with detailed explanations<br>
-    • Check the Network tab to see the actual HTTP requests<br>
-    • Responses are expandable in the console - drill down to explore the data structures
+    • Open Chrome DevTools (F12) to see output<br>
+    • Click dropdown menus to see available endpoints<br>
+    • All responses logged to console with details<br>
+    • Check Network tab for HTTP requests
   `;
   container.appendChild(helpDiv);
 }
 
 /**
- * Create a category section for organizing STUB functions
+ * Create a dropdown menu with STUB functions
  * 
- * @param {string} title - Category title
- * @param {string} description - Category description
- * @returns {HTMLElement} Category section element
+ * @param {string} title - Dropdown title
+ * @param {Array} items - Array of {label, action} objects
+ * @returns {HTMLElement} Dropdown menu element
  */
-function createStubCategory(title, description) {
-  const section = document.createElement('div');
-  section.className = 'mb-4';
+function createDropdownMenu(title, items) {
+  const dropdown = document.createElement('div');
+  dropdown.className = 'dropdown-menu';
   
-  const header = document.createElement('div');
-  header.className = 'mb-2';
-  header.innerHTML = `
-    <h3 class="text-sm font-semibold text-tandem-blue">${title}</h3>
-    <p class="text-xs text-dark-text-secondary mt-1">${description}</p>
+  // Create toggle button
+  const toggle = document.createElement('button');
+  toggle.className = 'dropdown-toggle';
+  toggle.innerHTML = `
+    <span>${title}</span>
+    <svg class="dropdown-toggle-icon w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+    </svg>
   `;
   
-  section.appendChild(header);
-  return section;
-}
-
-/**
- * Create a STUB button with hover info
- * 
- * @param {string} label - Button label
- * @param {string} description - Description shown on hover
- * @param {Function} onClick - Function to call when clicked
- * @returns {HTMLElement} Button element
- */
-function createStubButton(label, description, onClick) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'stub-section';
+  // Create dropdown content
+  const content = document.createElement('div');
+  content.className = 'dropdown-content';
   
-  const button = document.createElement('button');
-  button.className = 'stub-button';
-  button.textContent = label;
-  button.title = description;
-  
-  button.addEventListener('click', async () => {
-    // Disable button during execution
-    button.disabled = true;
-    button.textContent = `${label} (running...)`;
+  // Add items
+  items.forEach(item => {
+    const button = document.createElement('button');
+    button.className = 'dropdown-item';
+    button.textContent = item.label;
     
-    try {
-      // Execute the STUB function
-      await onClick();
-    } catch (error) {
-      console.error('Error executing stub:', error);
-    } finally {
-      // Re-enable button
-      button.disabled = false;
-      button.textContent = label;
-    }
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const originalText = button.textContent;
+      button.textContent = `${originalText} (running...)`;
+      
+      try {
+        await item.action();
+      } catch (error) {
+        console.error('Error executing stub:', error);
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+    
+    content.appendChild(button);
   });
   
-  const hint = document.createElement('span');
-  hint.className = 'console-hint';
-  hint.textContent = '💡 Check console for output';
+  // Toggle visibility on click
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('active');
+    content.classList.toggle('show');
+  });
   
-  wrapper.appendChild(button);
-  wrapper.appendChild(hint);
+  dropdown.appendChild(toggle);
+  dropdown.appendChild(content);
   
-  return wrapper;
+  return dropdown;
 }
 
 /**
