@@ -193,13 +193,12 @@ function createDropdownMenu(title, items) {
       const inputForm = document.createElement('div');
       inputForm.id = formId;
       inputForm.className = 'stub-input-form hidden';
-      inputForm.style.margin = '0.5rem';
+      inputForm.style.margin = '0.375rem';
       inputForm.style.marginTop = '0';
       
       // Main input field (text input or model selector)
       const mainLabel = document.createElement('label');
       mainLabel.textContent = item.inputConfig.label;
-      mainLabel.className = 'block text-xs text-dark-text mb-1';
       
       let mainInput;
       if (item.inputConfig.type === 'modelSelect') {
@@ -215,7 +214,9 @@ function createDropdownMenu(title, items) {
           
           const isDefault = model.modelId === defaultModelURN;
           const displayName = model.label || (isDefault ? '** Default Model **' : 'Untitled Model');
-          option.textContent = displayName;
+          
+          // Show both name and URN for developer visibility
+          option.textContent = `${displayName} - ${model.modelId}`;
           
           // Pre-select the default model
           if (isDefault) {
@@ -244,7 +245,7 @@ function createDropdownMenu(title, items) {
         item.inputConfig.additionalFields.forEach(field => {
           const label = document.createElement('label');
           label.textContent = field.label;
-          label.className = 'block text-xs text-dark-text mb-1 mt-2';
+          label.style.marginTop = '0.5rem';
           
           const input = document.createElement('input');
           input.type = 'text';
@@ -260,7 +261,9 @@ function createDropdownMenu(title, items) {
       
       // Button container
       const buttonContainer = document.createElement('div');
-      buttonContainer.className = 'flex gap-2 mt-2';
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.gap = '0.375rem';
+      buttonContainer.style.marginTop = '0.5rem';
       
       // Execute button
       const executeBtn = document.createElement('button');
