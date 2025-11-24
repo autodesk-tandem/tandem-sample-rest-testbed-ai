@@ -400,8 +400,12 @@ function createDropdownMenu(title, items) {
               : (field.defaultValue || '');
             input.className = 'w-full text-xs';
             
+            inputForm.appendChild(label);
+            inputForm.appendChild(input);
+            
             // Add autocomplete datalist if specified and schemas are loaded
             if (field.autocomplete && areSchemasLoaded()) {
+              console.log(`Adding autocomplete for ${field.id}, type: ${field.autocomplete}`);
               const datalistId = generateDatalistId();
               input.setAttribute('list', datalistId);
               
@@ -411,11 +415,13 @@ function createDropdownMenu(title, items) {
               let options = [];
               if (field.autocomplete === 'category') {
                 options = getUniqueCategoryNames();
+                console.log(`  Found ${options.length} unique categories`);
               } else if (field.autocomplete === 'property') {
                 // Get properties, optionally filtered by category
                 const categoryInput = inputForm.querySelector('#categoryName');
                 const categoryFilter = categoryInput ? categoryInput.value : null;
                 options = getUniquePropertyNames(categoryFilter);
+                console.log(`  Found ${options.length} unique properties`);
                 
                 // Update property options when category changes
                 if (categoryInput) {
@@ -427,6 +433,7 @@ function createDropdownMenu(title, items) {
                       option.value = opt;
                       datalist.appendChild(option);
                     });
+                    console.log(`  Property list updated: ${newOptions.length} options for category "${categoryInput.value}"`);
                   });
                 }
               }
@@ -438,10 +445,9 @@ function createDropdownMenu(title, items) {
               });
               
               inputForm.appendChild(datalist);
+            } else if (field.autocomplete) {
+              console.log(`Autocomplete requested for ${field.id} but schemas not loaded yet`);
             }
-            
-            inputForm.appendChild(label);
-            inputForm.appendChild(input);
             
             if (fieldIdx === 0) {
               mainInput = input; // First field is "main"
