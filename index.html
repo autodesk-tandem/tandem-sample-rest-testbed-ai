@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tandem REST API Testbed</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'tandem-blue': '#0696D7',
+                        'tandem-dark': '#0D2C54',
+                        'dark-bg': '#1a1a1a',
+                        'dark-card': '#2a2a2a',
+                        'dark-border': '#404040',
+                        'dark-text': '#e0e0e0',
+                        'dark-text-secondary': '#a0a0a0',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #505050;
+        }
+        
+        /* Stub button styles */
+        .stub-button {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border: 1px solid #0696D7;
+            color: #0696D7;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            background: transparent;
+        }
+        
+        .stub-button:hover {
+            background: #0696D7;
+            color: white;
+        }
+        
+        .stub-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Console hint */
+        .console-hint {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 1rem;
+            font-size: 0.75rem;
+            color: #a0a0a0;
+            font-style: italic;
+        }
+        
+        /* Stub section */
+        .stub-section {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 0.375rem;
+        }
+        
+        .stub-section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Input form styles */
+        .stub-input-form {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            border-radius: 0.375rem;
+        }
+        
+        .stub-input-form input {
+            width: 100%;
+            padding: 0.5rem;
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 0.375rem;
+            color: #e0e0e0;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stub-input-form input:focus {
+            outline: none;
+            border-color: #0696D7;
+        }
+        
+        .stub-input-form button {
+            padding: 0.5rem 1rem;
+            background: #0696D7;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .stub-input-form button:hover {
+            background: #0577B0;
+        }
+    </style>
+</head>
+<body class="bg-dark-bg min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-dark-card shadow-lg border-b border-dark-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-14">
+                <!-- Logo and Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-tandem-blue rounded flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-lg font-semibold text-dark-text">Tandem REST API Testbed</h1>
+                </div>
+
+                <!-- Account and Facility Selectors -->
+                <div class="flex items-center space-x-3">
+                    <!-- Account Selector -->
+                    <div class="flex items-center space-x-2">
+                        <label for="accountSelect" class="text-xs font-medium text-dark-text-secondary">Account</label>
+                        <select id="accountSelect" 
+                                class="block w-44 rounded border-dark-border bg-dark-bg text-dark-text shadow-sm focus:border-tandem-blue focus:ring-tandem-blue text-xs py-1.5 px-2 border hidden">
+                            <option value="">Select Account...</option>
+                        </select>
+                    </div>
+
+                    <!-- Facility Selector -->
+                    <div class="flex items-center space-x-2">
+                        <label for="facilitySelect" class="text-xs font-medium text-dark-text-secondary">Facility</label>
+                        <select id="facilitySelect" 
+                                class="block w-44 rounded border-dark-border bg-dark-bg text-dark-text shadow-sm focus:border-tandem-blue focus:ring-tandem-blue text-xs py-1.5 px-2 border hidden">
+                            <option value="">Select Facility...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- User Actions -->
+                <div class="flex items-center space-x-2">
+                    <button id="loginBtn" 
+                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-tandem-blue hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tandem-blue transition">
+                        Sign In
+                    </button>
+                    <button id="logoutBtn" 
+                            class="hidden inline-flex items-center px-3 py-1.5 border border-dark-border text-xs font-medium rounded text-dark-text bg-dark-card hover:bg-dark-bg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tandem-blue transition">
+                        Sign Out
+                    </button>
+                    <a id="userProfileLink" 
+                       class="hidden" 
+                       href="https://accounts.autodesk.com/users/@me/view" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       title="View profile">
+                        <img id="userProfileImg" 
+                             class="h-8 w-8 rounded-full ring-2 ring-dark-border shadow-sm" 
+                             src="" 
+                             alt="User profile">
+                    </a>
+                    <a href="https://github.com/autodesk-tandem/tandem-sample-rest-testbed-ai" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       title="View source code"
+                       class="flex items-center justify-center h-8 w-8 rounded hover:bg-dark-border transition">
+                        <img src="https://github.githubassets.com/favicons/favicon.png" 
+                             alt="GitHub Repository" 
+                             class="h-5 w-5 invert opacity-80 hover:opacity-100">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Welcome Message (shown when not logged in) -->
+        <div id="welcomeMessage" class="text-center py-12">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-tandem-blue/20 rounded mb-4">
+                <svg class="w-8 h-8 text-tandem-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-dark-text mb-2">Welcome to Tandem REST API Testbed</h2>
+            <p class="text-xs text-dark-text-secondary mb-5">Sign in to explore Tandem REST API endpoints</p>
+            <button onclick="document.getElementById('loginBtn').click()" 
+                    class="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded text-white bg-tandem-blue hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tandem-blue transition">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                </svg>
+                Sign In with Autodesk
+            </button>
+        </div>
+
+        <!-- Dashboard Content (shown when logged in) -->
+        <div id="dashboardContent" class="hidden">
+            <!-- Facility Info Card -->
+            <div class="bg-dark-card rounded border border-dark-border p-4 mb-4">
+                <h2 class="text-sm font-semibold text-dark-text mb-3">Selected Facility</h2>
+                <div id="facilityInfo" class="text-dark-text-secondary text-sm">
+                    <p>Select a facility to begin exploring the API...</p>
+                </div>
+            </div>
+
+            <!-- Console Reminder -->
+            <div class="bg-yellow-900/30 border border-yellow-700 rounded p-4 mb-4">
+                <div class="flex items-start space-x-3">
+                    <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <h3 class="text-sm font-semibold text-yellow-500 mb-1">Developer Mode Active</h3>
+                        <p class="text-xs text-yellow-200">
+                            This testbed outputs API responses to the <strong>browser console</strong>. 
+                            Open Chrome DevTools (F12 or Cmd+Option+I) to see request/response details.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STUB Functions Section -->
+            <div class="bg-dark-card rounded border border-dark-border p-4 mb-4">
+                <h2 class="text-sm font-semibold text-dark-text mb-3">API Endpoints</h2>
+                <div id="stubsContainer" class="space-y-2">
+                    <!-- Stubs will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div class="bg-dark-card rounded border border-dark-border p-5 shadow-2xl">
+            <div class="flex items-center space-x-3">
+                <svg class="animate-spin h-5 w-5 text-tandem-blue" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-dark-text text-sm font-medium">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import main app module -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
+
