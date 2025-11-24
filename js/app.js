@@ -16,6 +16,7 @@ import {
 } from './api.js';
 import { RegionLabelMap } from '../tandem/constants.js';
 import { renderStubs } from './ui/stubUI.js';
+import { loadSchemasForFacility, clearSchemaCache } from './state/schemaCache.js';
 
 // DOM Elements
 const loginBtn = document.getElementById('loginBtn');
@@ -27,8 +28,9 @@ const facilitySelect = document.getElementById('facilitySelect');
 const welcomeMessage = document.getElementById('welcomeMessage');
 const dashboardContent = document.getElementById('dashboardContent');
 const loadingOverlay = document.getElementById('loadingOverlay');
-const facilityInfo = document.getElementById('facilityInfo');
 const stubsContainer = document.getElementById('stubsContainer');
+const facilityThumbnail = document.getElementById('facilityThumbnail');
+const thumbnailPlaceholder = document.getElementById('thumbnailPlaceholder');
 
 // State
 let accounts = [];
@@ -320,6 +322,12 @@ async function loadFacility(facilityURN) {
   if (currentFacilityURN === facilityURN) {
     return; // Already loaded
   }
+  
+  // Clear previous facility's schema cache
+  if (currentFacilityURN) {
+    clearSchemaCache();
+  }
+  
   currentFacilityURN = facilityURN;
   
   // Get region from cache (instant lookup, no API call needed!)
@@ -335,56 +343,28 @@ async function loadFacility(facilityURN) {
       getFacilityThumbnail(facilityURN, currentFacilityRegion)
     ]);
     
-    // Register thumbnail URL for cleanup
+    // Display thumbnail in viewer area
     if (thumbnailUrl) {
       registerThumbnailURL(thumbnailUrl);
+      facilityThumbnail.src = thumbnailUrl;
+      facilityThumbnail.classList.remove('hidden');
+      thumbnailPlaceholder.classList.add('hidden');
+    } else {
+      facilityThumbnail.classList.add('hidden');
+      thumbnailPlaceholder.classList.remove('hidden');
     }
     
-    if (info) {
-      const buildingName = info.props?.["Identity Data"]?.["Building Name"] || "Unknown";
-      const location = info.props?.["Identity Data"]?.["Address"] || null;
-      const regionInfo = info.region || null;
-      
-      facilityInfo.innerHTML = `
-        <div class="flex flex-col md:flex-row gap-4">
-          ${thumbnailUrl ? `
-          <div class="flex-shrink-0">
-            <img src="${thumbnailUrl}" 
-                 alt="Facility Thumbnail" 
-                 class="w-full md:w-48 h-32 object-cover rounded border border-dark-border">
-          </div>
-          ` : ''}
-          <div class="flex-grow space-y-1">
-            <div>
-              <span class="font-medium text-dark-text text-xs">Building:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs">${buildingName}</span>
-            </div>
-            ${location ? `
-            <div>
-              <span class="font-medium text-dark-text text-xs">Location:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs">${location}</span>
-            </div>
-            ` : ''}
-            ${regionInfo ? `
-            <div>
-              <span class="font-medium text-dark-text text-xs">Region:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs">${regionInfo}</span>
-            </div>
-            ` : ''}
-            <div>
-              <span class="font-medium text-dark-text text-xs">URN:</span>
-              <span class="text-dark-text-secondary ml-2 text-xs font-mono break-all">${facilityURN}</span>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      // Render STUB functions UI
-      renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
+    // Load schemas for all models (for autocomplete)
+    const models = info?.links || [];
+    if (models.length > 0) {
+      await loadSchemasForFacility(models, currentFacilityRegion);
     }
+    
+    // Render STUB functions UI
+    await renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
   } catch (error) {
     console.error('Error loading facility:', error);
-    facilityInfo.innerHTML = `<p class="text-red-600">Error loading facility information</p>`;
+    stubsContainer.innerHTML = `<p class="text-red-600 text-sm p-4">Error loading facility information</p>`;
   } finally {
     toggleLoading(false);
   }
@@ -440,7 +420,7 @@ async function initialize() {
     if (accounts && accounts.length > 0) {
       await populateAccountsDropdown(accounts);
     } else {
-      facilityInfo.innerHTML = '<p class="text-red-600">No accounts or facilities found. Please ensure you have access to at least one Tandem facility.</p>';
+      stubsContainer.innerHTML = '<p class="text-red-600 text-sm p-4">No accounts or facilities found. Please ensure you have access to at least one Tandem facility.</p>';
     }
   } else {
     updateUIForLoginState(false, null);
