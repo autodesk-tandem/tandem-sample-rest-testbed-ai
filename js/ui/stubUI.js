@@ -201,6 +201,57 @@ export async function renderStubs(container, facilityURN, region) {
     {
       label: 'SCAN for User Props',
       action: () => propertyStubs.scanForUserProps(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'Find Elements where Property = X',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Category Name',
+            id: 'categoryName',
+            type: 'text',
+            placeholder: 'e.g., Identity Data, Dimensions',
+            defaultValue: 'Identity Data'
+          },
+          {
+            label: 'Property Name',
+            id: 'propName',
+            type: 'text',
+            placeholder: 'e.g., Mark, Comments',
+            defaultValue: 'Mark'
+          },
+          {
+            label: 'Match String',
+            id: 'matchStr',
+            type: 'text',
+            placeholder: 'e.g., Basic Wall or ^Concrete',
+            defaultValue: ''
+          },
+          {
+            label: 'Is Javascript RegEx?',
+            id: 'isRegEx',
+            type: 'checkbox',
+            defaultValue: true
+          },
+          {
+            label: 'Is Case Insensitive?',
+            id: 'isCaseInsensitive',
+            type: 'checkbox',
+            defaultValue: false
+          }
+        ],
+        onExecute: (values) => propertyStubs.findElementsWherePropValueEquals(
+          currentFacilityURN, 
+          currentFacilityRegion, 
+          values.categoryName, 
+          values.propName, 
+          values.matchStr,
+          values.isRegEx,
+          values.isCaseInsensitive
+        )
+      }
     }
   ]);
   
