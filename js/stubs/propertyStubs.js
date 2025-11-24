@@ -70,6 +70,106 @@ export async function getQualifiedProperty(facilityURN, region, categoryName, pr
 }
 
 /**
+ * Scan for elements that have a specific qualified property
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @param {string} categoryName - Property category name
+ * @param {string} propName - Property name
+ * @param {boolean} includeHistory - Whether to include property history
+ * @returns {Promise<void>}
+ */
+export async function scanForProperty(facilityURN, region, categoryName, propName, includeHistory) {
+  console.group("STUB: scanForProperty()");
+  
+  const facilityPath = `${tandemBaseURL}/twins/${facilityURN}`;
+  console.log(facilityPath);
+  
+  try {
+    const facilityResponse = await fetch(facilityPath, makeRequestOptionsGET(region));
+    const facilityData = await facilityResponse.json();
+    const models = facilityData.links || [];
+    
+    // Loop through each model
+    for (let i = 0; i < models.length; i++) {
+      const model = models[i];
+      const modelLabel = model.label || `Model ${i}`;
+      const modelURN = model.modelId;
+      
+      console.group(`Model[${i}] --> ${modelLabel}`);
+      console.log(`Model URN: ${modelURN}`);
+      
+      // First, get the qualified property ID from the schema
+      const schemaPath = `${tandemBaseURL}/modeldata/${modelURN}/schema`;
+      console.log(schemaPath);
+      
+      const schemaResponse = await fetch(schemaPath, makeRequestOptionsGET(region));
+      const schema = await schemaResponse.json();
+      
+      // Search for the qualified property
+      const qualProps = [];
+      const attrs = schema.attributes || [];
+      
+      for (let j = 0; j < attrs.length; j++) {
+        if (attrs[j].category === categoryName && attrs[j].name === propName) {
+          qualProps.push(attrs[j]);
+        }
+      }
+      
+      if (qualProps.length > 0) {
+        // Build qualified columns array
+        const qualifiedColumns = qualProps.map(prop => prop.id);
+        
+        // Now scan for elements with this property
+        const bodyPayload = JSON.stringify({
+          qualifiedColumns: qualifiedColumns,
+          includeHistory: includeHistory
+        });
+        
+        const scanPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+        console.log(scanPath);
+        console.log(`Include History: ${includeHistory}`);
+        
+        const scanResponse = await fetch(scanPath, makeRequestOptionsPOST(bodyPayload, region));
+        const scanData = await scanResponse.json();
+        console.log("Result from Tandem DB Server -->", scanData);
+        
+        // Also show a nice table of the property values
+        const propValues = [];
+        for (let k = 1; k < scanData.length; k++) {
+          const rowObj = scanData[k];
+          if (rowObj) {
+            const key = rowObj.k;
+            for (let m = 0; m < qualProps.length; m++) {
+              const prop = rowObj[qualProps[m].id];
+              if (prop) {
+                if (includeHistory) {
+                  propValues.push({ key: key, prop: qualProps[m].id, value: prop });
+                } else {
+                  propValues.push({ key: key, prop: qualProps[m].id, value: prop[0] });
+                }
+              }
+            }
+          }
+        }
+        
+        if (propValues.length > 0) {
+          console.table(propValues);
+        }
+      } else {
+        console.log(`Could not find [${categoryName} | ${propName}] in this model`);
+      }
+      
+      console.groupEnd();
+    }
+  } catch (error) {
+    console.error('Error scanning for property:', error);
+  }
+  
+  console.groupEnd();
+}
+
+/**
  * Scan for all user-defined properties (DtProperties family = "z")
  * 
  * @param {string} facilityURN - Facility URN

@@ -153,17 +153,49 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Category Name',
             id: 'categoryName',
+            type: 'text',
             placeholder: 'e.g., Identity Data, Dimensions',
             defaultValue: 'Identity Data'
           },
           {
             label: 'Property Name',
             id: 'propName',
+            type: 'text',
             placeholder: 'e.g., Mark, Comments',
             defaultValue: 'Mark'
           }
         ],
         onExecute: (values) => propertyStubs.getQualifiedProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName)
+      }
+    },
+    {
+      label: 'SCAN for Property',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Category Name',
+            id: 'categoryName',
+            type: 'text',
+            placeholder: 'e.g., Identity Data, Dimensions',
+            defaultValue: 'Identity Data'
+          },
+          {
+            label: 'Property Name',
+            id: 'propName',
+            type: 'text',
+            placeholder: 'e.g., Mark, Comments',
+            defaultValue: 'Mark'
+          },
+          {
+            label: 'Include History',
+            id: 'includeHistory',
+            type: 'checkbox',
+            defaultValue: false
+          }
+        ],
+        onExecute: (values) => propertyStubs.scanForProperty(currentFacilityURN, currentFacilityRegion, values.categoryName, values.propName, values.includeHistory)
       }
     },
     {
@@ -234,26 +266,58 @@ function createDropdownMenu(title, items) {
       
       // Handle different input types
       if (item.inputConfig.type === 'multiText') {
-        // Multiple text fields (e.g., Category Name + Property Name)
+        // Multiple fields (text inputs and/or checkboxes)
         item.inputConfig.fields.forEach((field, fieldIdx) => {
-          const label = document.createElement('label');
-          label.textContent = field.label;
-          if (fieldIdx > 0) label.style.marginTop = '0.5rem';
+          const fieldType = field.type || 'text';
           
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.id = field.id;
-          input.placeholder = field.placeholder || '';
-          input.value = field.defaultValue || '';
-          input.className = 'w-full text-xs';
-          
-          inputForm.appendChild(label);
-          inputForm.appendChild(input);
-          
-          if (fieldIdx === 0) {
-            mainInput = input; // First field is "main"
+          if (fieldType === 'checkbox') {
+            // Checkbox field - create a container with label and checkbox
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.style.marginTop = fieldIdx > 0 ? '0.5rem' : '0';
+            checkboxContainer.style.display = 'flex';
+            checkboxContainer.style.alignItems = 'center';
+            checkboxContainer.style.gap = '0.5rem';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = field.id;
+            checkbox.checked = field.defaultValue || false;
+            checkbox.style.width = 'auto';
+            checkbox.style.cursor = 'pointer';
+            
+            const label = document.createElement('label');
+            label.textContent = field.label;
+            label.htmlFor = field.id;
+            label.style.margin = '0';
+            label.style.cursor = 'pointer';
+            label.style.fontSize = '0.75rem';
+            
+            checkboxContainer.appendChild(checkbox);
+            checkboxContainer.appendChild(label);
+            inputForm.appendChild(checkboxContainer);
+            
+            additionalInputs.push(checkbox);
           } else {
-            additionalInputs.push(input);
+            // Text input field
+            const label = document.createElement('label');
+            label.textContent = field.label;
+            if (fieldIdx > 0) label.style.marginTop = '0.5rem';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = field.id;
+            input.placeholder = field.placeholder || '';
+            input.value = field.defaultValue || '';
+            input.className = 'w-full text-xs';
+            
+            inputForm.appendChild(label);
+            inputForm.appendChild(input);
+            
+            if (fieldIdx === 0) {
+              mainInput = input; // First field is "main"
+            } else {
+              additionalInputs.push(input);
+            }
           }
         });
       } else {
@@ -348,7 +412,12 @@ function createDropdownMenu(title, items) {
             item.inputConfig.fields.forEach(field => {
               const input = inputForm.querySelector(`#${field.id}`);
               if (input) {
-                values[field.id] = input.value;
+                // Handle checkboxes differently from text inputs
+                if (input.type === 'checkbox') {
+                  values[field.id] = input.checked;
+                } else {
+                  values[field.id] = input.value;
+                }
               }
             });
             await item.inputConfig.onExecute(values);
@@ -379,14 +448,18 @@ function createDropdownMenu(title, items) {
       // Button click toggles form visibility
       button.addEventListener('click', () => {
         inputForm.classList.toggle('hidden');
-        // Refresh default values when opening (for text inputs only, not selects)
+        // Refresh default values when opening (for text inputs and checkboxes, not selects)
         if (!inputForm.classList.contains('hidden')) {
           if (item.inputConfig.type === 'multiText') {
             // Refresh all multiText fields
             item.inputConfig.fields.forEach(field => {
               const input = inputForm.querySelector(`#${field.id}`);
               if (input && input.tagName.toLowerCase() === 'input') {
-                input.value = field.defaultValue || '';
+                if (input.type === 'checkbox') {
+                  input.checked = field.defaultValue || false;
+                } else {
+                  input.value = field.defaultValue || '';
+                }
               }
             });
           } else if (item.inputConfig.type !== 'modelSelect') {
