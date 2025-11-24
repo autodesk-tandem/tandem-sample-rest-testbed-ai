@@ -285,7 +285,7 @@ export async function renderStubs(container, facilityURN, region) {
   const helpDiv = document.createElement('div');
   helpDiv.className = 'mt-4 p-3 bg-dark-bg border border-dark-border rounded text-xs text-dark-text-secondary';
   helpDiv.innerHTML = `
-    <strong class="text-dark-text">💡 Developer Tips:</strong><br>
+    <strong class="text-dark-text">Developer Tips:</strong><br>
     • Open Chrome DevTools (F12) to see output<br>
     • Click dropdown menus to see available endpoints<br>
     • All responses logged to console with details<br>
@@ -474,7 +474,7 @@ function createDropdownMenu(title, items) {
         helpTitle.style.fontWeight = 'bold';
         helpTitle.style.marginBottom = '0.25rem';
         helpTitle.style.color = '#9ca3af';
-        helpTitle.textContent = '💡 RegEx Pattern Examples:';
+        helpTitle.textContent = 'RegEx Pattern Examples:';
         
         const helpTable = document.createElement('div');
         helpTable.style.fontFamily = 'monospace';
@@ -493,7 +493,7 @@ function createDropdownMenu(title, items) {
             <span>"Concrete" OR "Steel"</span>
           </div>
           <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #404040; color: #9ca3af;">
-            <strong>💡 Tip:</strong> For exact match, uncheck "Is Javascript RegEx?"
+            <strong>Tip:</strong> For exact match, uncheck "Is Javascript RegEx?"
           </div>
         `;
         
@@ -722,7 +722,7 @@ export function createStubWithInput(label, description, inputFields, onExecute) 
   
   const hint = document.createElement('span');
   hint.className = 'console-hint';
-  hint.textContent = '💡 Check console for output';
+  hint.textContent = 'Check console for output';
   
   wrapper.appendChild(button);
   wrapper.appendChild(hint);
