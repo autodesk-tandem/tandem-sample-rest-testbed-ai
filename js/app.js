@@ -379,7 +379,7 @@ async function loadFacility(facilityURN) {
       `;
       
       // Render STUB functions UI
-      renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
+      await renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
     }
   } catch (error) {
     console.error('Error loading facility:', error);

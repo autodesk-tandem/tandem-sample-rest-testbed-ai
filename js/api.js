@@ -201,6 +201,22 @@ export function cleanupThumbnailURLs() {
 }
 
 /**
+ * Get models for a facility
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region identifier
+ * @returns {Promise<Array>} List of models
+ */
+export async function getModels(facilityURN, region) {
+  try {
+    const facilityInfo = await getFacilityInfo(facilityURN, region);
+    return facilityInfo ? facilityInfo.links : null;
+  } catch (error) {
+    console.error('Error fetching models:', error);
+    return null;
+  }
+}
+
+/**
  * Get the default model URN from a facility URN
  * 
  * The "default" model is where streams and other logical elements exist.

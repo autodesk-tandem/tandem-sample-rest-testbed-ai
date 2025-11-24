@@ -12,11 +12,12 @@
 
 import * as facilityStubs from '../stubs/facilityStubs.js';
 import * as modelStubs from '../stubs/modelStubs.js';
-import { getDefaultModelURN } from '../api.js';
+import { getDefaultModelURN, getModels } from '../api.js';
 
 // Store current facility context for STUB functions
 let currentFacilityURN = null;
 let currentFacilityRegion = null;
+let currentModels = [];
 
 /**
  * Main function to render all STUB sections
@@ -28,10 +29,13 @@ let currentFacilityRegion = null;
  * @param {string} facilityURN - Current facility URN
  * @param {string} region - Current region
  */
-export function renderStubs(container, facilityURN, region) {
+export async function renderStubs(container, facilityURN, region) {
   // Store context
   currentFacilityURN = facilityURN;
   currentFacilityRegion = region;
+  
+  // Load models for this facility (needed for model selector)
+  currentModels = await getModels(facilityURN, region) || [];
   
   container.innerHTML = '';
   
@@ -73,67 +77,55 @@ export function renderStubs(container, facilityURN, region) {
   const modelDropdown = createDropdownMenu('Model Stubs', [
     {
       label: 'GET Model Properties',
-      action: () => modelStubs.getModelProperties(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
       hasInput: true,
       inputConfig: {
-        label: 'Model URN',
-        defaultValue: () => getDefaultModelURN(currentFacilityURN),
-        placeholder: 'Enter model URN...',
-        onExecute: (value) => modelStubs.getModelProperties(value, currentFacilityRegion)
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => modelStubs.getModelProperties(modelUrn, currentFacilityRegion)
       }
     },
     {
       label: 'GET Model',
-      action: () => modelStubs.getModel(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
       hasInput: true,
       inputConfig: {
-        label: 'Model URN',
-        defaultValue: () => getDefaultModelURN(currentFacilityURN),
-        placeholder: 'Enter model URN...',
-        onExecute: (value) => modelStubs.getModel(value, currentFacilityRegion)
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => modelStubs.getModel(modelUrn, currentFacilityRegion)
       }
     },
     {
       label: 'GET AEC Model Data',
-      action: () => modelStubs.getAECModelData(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
       hasInput: true,
       inputConfig: {
-        label: 'Model URN',
-        defaultValue: () => getDefaultModelURN(currentFacilityURN),
-        placeholder: 'Enter model URN...',
-        onExecute: (value) => modelStubs.getAECModelData(value, currentFacilityRegion)
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => modelStubs.getAECModelData(modelUrn, currentFacilityRegion)
       }
     },
     {
       label: 'GET Model Data Attributes',
-      action: () => modelStubs.getModelDataAttrs(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
       hasInput: true,
       inputConfig: {
-        label: 'Model URN',
-        defaultValue: () => getDefaultModelURN(currentFacilityURN),
-        placeholder: 'Enter model URN...',
-        onExecute: (value) => modelStubs.getModelDataAttrs(value, currentFacilityRegion)
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => modelStubs.getModelDataAttrs(modelUrn, currentFacilityRegion)
       }
     },
     {
       label: 'GET Model Data Schema',
-      action: () => modelStubs.getModelDataSchema(getDefaultModelURN(currentFacilityURN), currentFacilityRegion),
       hasInput: true,
       inputConfig: {
-        label: 'Model URN',
-        defaultValue: () => getDefaultModelURN(currentFacilityURN),
-        placeholder: 'Enter model URN...',
-        onExecute: (value) => modelStubs.getModelDataSchema(value, currentFacilityRegion)
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => modelStubs.getModelDataSchema(modelUrn, currentFacilityRegion)
       }
     },
     {
       label: 'GET Model Data Fragments',
-      action: () => modelStubs.getModelDataFragments(getDefaultModelURN(currentFacilityURN), currentFacilityRegion, ''),
       hasInput: true,
       inputConfig: {
-        label: 'Model URN',
-        defaultValue: () => getDefaultModelURN(currentFacilityURN),
-        placeholder: 'Enter model URN...',
+        type: 'modelSelect',
+        label: 'Model',
         additionalFields: [
           {
             label: 'Element Keys (comma-separated, optional)',
@@ -204,18 +196,44 @@ function createDropdownMenu(title, items) {
       inputForm.style.margin = '0.5rem';
       inputForm.style.marginTop = '0';
       
-      // Main input field
+      // Main input field (text input or model selector)
       const mainLabel = document.createElement('label');
       mainLabel.textContent = item.inputConfig.label;
       mainLabel.className = 'block text-xs text-dark-text mb-1';
       
-      const mainInput = document.createElement('input');
-      mainInput.type = 'text';
-      mainInput.placeholder = item.inputConfig.placeholder;
-      mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
-        ? item.inputConfig.defaultValue() 
-        : item.inputConfig.defaultValue;
-      mainInput.className = 'w-full text-xs';
+      let mainInput;
+      if (item.inputConfig.type === 'modelSelect') {
+        // Create a dropdown for model selection
+        mainInput = document.createElement('select');
+        mainInput.className = 'w-full text-xs';
+        
+        // Populate with models
+        const defaultModelURN = getDefaultModelURN(currentFacilityURN);
+        currentModels.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model.modelId;
+          
+          const isDefault = model.modelId === defaultModelURN;
+          const displayName = model.label || (isDefault ? '** Default Model **' : 'Untitled Model');
+          option.textContent = displayName;
+          
+          // Pre-select the default model
+          if (isDefault) {
+            option.selected = true;
+          }
+          
+          mainInput.appendChild(option);
+        });
+      } else {
+        // Regular text input
+        mainInput = document.createElement('input');
+        mainInput.type = 'text';
+        mainInput.placeholder = item.inputConfig.placeholder;
+        mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
+          ? item.inputConfig.defaultValue() 
+          : item.inputConfig.defaultValue;
+        mainInput.className = 'w-full text-xs';
+      }
       
       inputForm.appendChild(mainLabel);
       inputForm.appendChild(mainInput);
@@ -285,11 +303,13 @@ function createDropdownMenu(title, items) {
       // Button click toggles form visibility
       button.addEventListener('click', () => {
         inputForm.classList.toggle('hidden');
-        // Refresh default value when opening
-        if (!inputForm.classList.contains('hidden')) {
-          mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
-            ? item.inputConfig.defaultValue() 
-            : item.inputConfig.defaultValue;
+        // Refresh default value when opening (for text inputs only, not selects)
+        if (!inputForm.classList.contains('hidden') && item.inputConfig.type !== 'modelSelect') {
+          if (mainInput.tagName.toLowerCase() === 'input') {
+            mainInput.value = typeof item.inputConfig.defaultValue === 'function' 
+              ? item.inputConfig.defaultValue() 
+              : item.inputConfig.defaultValue;
+          }
         }
       });
       
