@@ -173,27 +173,81 @@ export function getPropertyInfo(category, propertyName) {
 }
 
 /**
+ * Look up a property's attribute info by qualified property ID
+ * @param {string} qualifiedPropId - Qualified property ID (e.g., "z:5mQ")
+ * @returns {Object|null} Property attribute object with dataType, or null if not found
+ */
+export function getPropertyInfoByQualifiedId(qualifiedPropId) {
+  if (!qualifiedPropId) return null;
+  
+  // The lookup map uses the full attribute ID (e.g., "z:5mQ")
+  for (const schema of Object.values(schemaCache)) {
+    const attr = schema.lookup.get(qualifiedPropId);
+    if (attr) {
+      return attr;
+    }
+  }
+  return null;
+}
+
+/**
  * Data type constants for Tandem properties
- * These match the dataType field in schema attributes
+ * 
+ * These match the AttributeType enum from Tandem:
+ *   0 = Unknown
+ *   1 = Boolean
+ *   2 = Integer
+ *   3 = Double
+ *   4 = Float
+ *   20 = String
  */
 export const DataTypes = {
-  INTEGER: 1,
-  FLOAT: 2,
-  BOOLEAN: 3,
+  UNKNOWN: 0,
+  BOOLEAN: 1,
+  INTEGER: 2,
+  DOUBLE: 3,
+  FLOAT: 4,
   STRING: 20,
   
-  // Helper to check if a dataType is numeric
-  isNumeric: (dataType) => dataType === 1 || dataType === 2,
+  // Helper to check if a property is numeric (Integer, Double, or Float)
+  isNumeric: (propInfo) => {
+    if (!propInfo) return false;
+    const dt = propInfo.dataType;
+    return dt === 2 || dt === 3 || dt === 4; // Integer, Double, Float
+  },
   
-  // Helper to check if a dataType is boolean
-  isBoolean: (dataType) => dataType === 3,
+  // Helper to check if a property is boolean
+  isBoolean: (propInfo) => {
+    if (!propInfo) return false;
+    return propInfo.dataType === 1; // Boolean
+  },
   
-  // Helper to get a friendly name for a dataType
-  getName: (dataType) => {
-    switch (dataType) {
-      case 1: return 'Integer';
-      case 2: return 'Float';
-      case 3: return 'Boolean';
+  // Helper to check if a property is a string
+  isString: (propInfo) => {
+    if (!propInfo) return true; // Default to string if unknown
+    return propInfo.dataType === 20; // String
+  },
+  
+  // Helper to get a friendly name for a property's type
+  getName: (propInfo) => {
+    if (!propInfo) return 'Unknown';
+    
+    // If it has unit context, extract the unit name for display
+    if (propInfo.dataTypeContext) {
+      const match = propInfo.dataTypeContext.match(/:([a-zA-Z]+)/);
+      if (match) {
+        const typeName = match[1];
+        return typeName.charAt(0).toUpperCase() + typeName.slice(1);
+      }
+    }
+    
+    // Fallback to dataType code
+    switch (propInfo.dataType) {
+      case 0: return 'Unknown';
+      case 1: return 'Boolean';
+      case 2: return 'Integer';
+      case 3: return 'Double';
+      case 4: return 'Float';
       case 20: return 'String';
       default: return 'Unknown';
     }
