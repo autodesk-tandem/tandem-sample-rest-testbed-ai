@@ -38,6 +38,76 @@ function generateDatalistId() {
 }
 
 /**
+ * Create an autocomplete select dropdown for category or property names
+ * 
+ * @param {Object} field - Field configuration with id, placeholder, defaultValue, autocomplete type
+ * @param {HTMLElement} inputForm - The parent form element (used to find related inputs)
+ * @returns {HTMLSelectElement} The configured select element
+ */
+function createAutocompleteSelect(field, inputForm) {
+  const select = document.createElement('select');
+  select.id = field.id;
+  select.className = 'w-full text-xs';
+  
+  let options = [];
+  if (field.autocomplete === 'category') {
+    options = getUniqueCategoryNames();
+  } else if (field.autocomplete === 'property') {
+    // Get properties, optionally filtered by category
+    const categoryInput = inputForm.querySelector('#propCategory') || inputForm.querySelector('#categoryName');
+    const categoryFilter = categoryInput ? categoryInput.value : null;
+    options = getUniquePropertyNames(categoryFilter);
+  }
+  
+  // Add a default "Select..." option
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = field.placeholder || 'Select...';
+  select.appendChild(defaultOption);
+  
+  // Add all options
+  options.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    select.appendChild(option);
+  });
+  
+  // Set default value if provided
+  const defaultValue = typeof field.defaultValue === 'function' 
+    ? field.defaultValue() 
+    : (field.defaultValue || '');
+  if (defaultValue && options.includes(defaultValue)) {
+    select.value = defaultValue;
+  }
+  
+  // For property dropdown, update when category changes
+  if (field.autocomplete === 'property') {
+    const categoryInput = inputForm.querySelector('#propCategory') || inputForm.querySelector('#categoryName');
+    if (categoryInput) {
+      categoryInput.addEventListener('change', () => {
+        const newOptions = getUniquePropertyNames(categoryInput.value || null);
+        select.innerHTML = '';
+        
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = field.placeholder || 'Select...';
+        select.appendChild(defaultOpt);
+        
+        newOptions.forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt;
+          select.appendChild(option);
+        });
+      });
+    }
+  }
+  
+  return select;
+}
+
+/**
  * Main function to render all STUB sections
  * 
  * This is called when a facility is selected. It renders all available
@@ -464,14 +534,16 @@ export async function renderStubs(container, facilityURN, region) {
             id: 'propCategory',
             type: 'text',
             placeholder: 'e.g., Identity Data',
-            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data'),
+            autocomplete: 'category'
           },
           {
             label: 'Property Name',
             id: 'propName',
             type: 'text',
             placeholder: 'e.g., Mark',
-            defaultValue: () => getLastInputValue('propName', 'Mark')
+            defaultValue: () => getLastInputValue('propName', 'Mark'),
+            autocomplete: 'property'
           },
           {
             label: 'Property Value',
@@ -630,69 +702,7 @@ function createDropdownMenu(title, items) {
             
             // Use select dropdown for autocomplete if schemas are loaded
             if (field.autocomplete && areSchemasLoaded()) {
-              console.log(`Adding autocomplete dropdown for ${field.id}, type: ${field.autocomplete}`);
-              
-              input = document.createElement('select');
-              input.id = field.id;
-              input.className = 'w-full text-xs';
-              
-              let options = [];
-              if (field.autocomplete === 'category') {
-                options = getUniqueCategoryNames();
-                console.log(`  Found ${options.length} unique categories`);
-              } else if (field.autocomplete === 'property') {
-                // Get properties, optionally filtered by category
-                const categoryInput = inputForm.querySelector('#categoryName');
-                const categoryFilter = categoryInput ? categoryInput.value : null;
-                options = getUniquePropertyNames(categoryFilter);
-                console.log(`  Found ${options.length} unique properties`);
-              }
-              
-              // Add a default "Select..." option
-              const defaultOption = document.createElement('option');
-              defaultOption.value = '';
-              defaultOption.textContent = field.placeholder || 'Select...';
-              input.appendChild(defaultOption);
-              
-              // Add all options
-              options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt;
-                option.textContent = opt;
-                input.appendChild(option);
-              });
-              
-              // Set default value if provided
-              const defaultValue = typeof field.defaultValue === 'function' 
-                ? field.defaultValue() 
-                : (field.defaultValue || '');
-              if (defaultValue && options.includes(defaultValue)) {
-                input.value = defaultValue;
-              }
-              
-              // For property dropdown, update when category changes
-              if (field.autocomplete === 'property') {
-                const categoryInput = inputForm.querySelector('#categoryName');
-                if (categoryInput) {
-                  categoryInput.addEventListener('change', () => {
-                    const newOptions = getUniquePropertyNames(categoryInput.value || null);
-                    input.innerHTML = '';
-                    
-                    const defaultOpt = document.createElement('option');
-                    defaultOpt.value = '';
-                    defaultOpt.textContent = field.placeholder || 'Select...';
-                    input.appendChild(defaultOpt);
-                    
-                    newOptions.forEach(opt => {
-                      const option = document.createElement('option');
-                      option.value = opt;
-                      option.textContent = opt;
-                      input.appendChild(option);
-                    });
-                    console.log(`  Property list updated: ${newOptions.length} options for category "${categoryInput.value}"`);
-                  });
-                }
-              }
+              input = createAutocompleteSelect(field, inputForm);
             } else {
               // Regular text input (fallback when schemas not loaded)
               input = document.createElement('input');
@@ -703,10 +713,6 @@ function createDropdownMenu(title, items) {
                 ? field.defaultValue() 
                 : (field.defaultValue || '');
               input.className = 'w-full text-xs';
-              
-              if (field.autocomplete) {
-                console.log(`Autocomplete requested for ${field.id} but schemas not loaded yet - using text input`);
-              }
             }
             
             inputForm.appendChild(label);
@@ -840,20 +846,28 @@ function createDropdownMenu(title, items) {
               additionalInputs.push(checklistContainer);
               
             } else {
-              // Text input field
+              // Text input field (or select for autocomplete)
               const label = document.createElement('label');
               label.textContent = field.label;
               label.style.marginTop = '0.5rem';
               
-              const input = document.createElement('input');
-              input.type = 'text';
-              input.id = field.id;
-              input.placeholder = field.placeholder || '';
-              const defaultVal = typeof field.defaultValue === 'function' 
-                ? field.defaultValue() 
-                : (field.defaultValue || '');
-              input.value = defaultVal;
-              input.className = 'w-full text-xs';
+              let input;
+              
+              // Use select dropdown for autocomplete if schemas are loaded
+              if (field.autocomplete && areSchemasLoaded()) {
+                input = createAutocompleteSelect(field, inputForm);
+              } else {
+                // Regular text input (fallback when schemas not loaded or no autocomplete)
+                input = document.createElement('input');
+                input.type = 'text';
+                input.id = field.id;
+                input.placeholder = field.placeholder || '';
+                const defaultVal = typeof field.defaultValue === 'function' 
+                  ? field.defaultValue() 
+                  : (field.defaultValue || '');
+                input.value = defaultVal;
+                input.className = 'w-full text-xs';
+              }
               
               inputForm.appendChild(label);
               inputForm.appendChild(input);

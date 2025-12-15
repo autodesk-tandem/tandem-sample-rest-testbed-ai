@@ -217,7 +217,8 @@
         }
         
         .dropdown-content.show {
-            max-height: 600px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
             transition: max-height 0.3s ease-in;
         }
         
