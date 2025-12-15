@@ -322,6 +322,182 @@ export async function renderStubs(container, facilityURN, region) {
           );
         }
       }
+    },
+    {
+      label: 'SCAN Brute Force (full model)',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => propertyStubs.getScanBruteForce(modelUrn, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'SCAN with Options',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, optional)',
+            id: 'elemKeys',
+            placeholder: 'Leave empty for entire model',
+            defaultValue: ''
+          },
+          {
+            label: 'Column Families (comma-separated)',
+            id: 'colFamilies',
+            placeholder: 'e.g., n,z,l (n=Standard, z=DtProps, l=Refs)',
+            defaultValue: 'n'
+          },
+          {
+            label: 'Include History',
+            id: 'includeHistory',
+            type: 'checkbox',
+            defaultValue: false
+          }
+        ],
+        onExecute: (modelUrn, elemKeys, colFamilies, includeHistory) => 
+          propertyStubs.getScanElementsOptions(modelUrn, currentFacilityRegion, elemKeys || '', includeHistory || false, colFamilies || '')
+      }
+    },
+    {
+      label: 'SCAN with Qualified Props',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, optional)',
+            id: 'elemKeys',
+            placeholder: 'Leave empty for entire model',
+            defaultValue: ''
+          },
+          {
+            label: 'Qualified Properties (comma-separated)',
+            id: 'qualProps',
+            placeholder: 'e.g., z:5mQ,n:n (from GET Schema)',
+            defaultValue: 'n:n'
+          },
+          {
+            label: 'Include History',
+            id: 'includeHistory',
+            type: 'checkbox',
+            defaultValue: false
+          }
+        ],
+        onExecute: (modelUrn, elemKeys, qualProps, includeHistory) => 
+          propertyStubs.getScanElementsQualProps(modelUrn, currentFacilityRegion, elemKeys || '', includeHistory || false, qualProps || '')
+      }
+    },
+    {
+      label: 'SCAN Full Change History',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, required)',
+            id: 'elemKeys',
+            placeholder: 'Element keys are required',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, elemKeys) => propertyStubs.getScanElementsFullChangeHistory(modelUrn, currentFacilityRegion, elemKeys || '')
+      }
+    },
+    {
+      label: 'Assign Classification',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Classification String',
+            id: 'classificationStr',
+            placeholder: 'e.g., Walls > Curtain Wall',
+            defaultValue: ''
+          },
+          {
+            label: 'Element Keys (comma-separated)',
+            id: 'elemKeys',
+            placeholder: 'Keys of elements to update',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, classificationStr, elemKeys) => 
+          propertyStubs.assignClassification(currentFacilityURN, currentFacilityRegion, classificationStr || '', modelUrn, elemKeys || '')
+      }
+    },
+    {
+      label: 'SET Property (by Category/Name)',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Category Name',
+            id: 'propCategory',
+            placeholder: 'e.g., Identity Data',
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
+          },
+          {
+            label: 'Property Name',
+            id: 'propName',
+            placeholder: 'e.g., Mark',
+            defaultValue: () => getLastInputValue('propName', 'Mark')
+          },
+          {
+            label: 'Property Value',
+            id: 'propVal',
+            placeholder: 'New value to set',
+            defaultValue: ''
+          },
+          {
+            label: 'Element Keys (comma-separated)',
+            id: 'elemKeys',
+            placeholder: 'Keys of elements to update',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, propCategory, propName, propVal, elemKeys) => 
+          propertyStubs.setPropertySelSet(modelUrn, currentFacilityRegion, propCategory || '', propName || '', propVal || '', elemKeys || '')
+      }
+    },
+    {
+      label: 'SET Property (by Qualified Prop)',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Qualified Property ID',
+            id: 'qualPropStr',
+            placeholder: 'e.g., z:5mQ (from GET Schema)',
+            defaultValue: ''
+          },
+          {
+            label: 'Property Value',
+            id: 'propVal',
+            placeholder: 'New value to set',
+            defaultValue: ''
+          },
+          {
+            label: 'Element Keys (comma-separated)',
+            id: 'elemKeys',
+            placeholder: 'Keys of elements to update',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, qualPropStr, propVal, elemKeys) => 
+          propertyStubs.setPropertySelSetQP(modelUrn, currentFacilityRegion, qualPropStr || '', propVal || '', elemKeys || '')
+      }
     }
   ]);
   
