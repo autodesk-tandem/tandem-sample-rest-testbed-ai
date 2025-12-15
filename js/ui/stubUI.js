@@ -13,6 +13,7 @@
 import * as facilityStubs from '../stubs/facilityStubs.js';
 import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
+import * as groupStubs from '../stubs/groupStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
 import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, getPropertyInfoByQualifiedId, DataTypes } from '../state/schemaCache.js';
 
@@ -20,6 +21,7 @@ import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPr
 let currentFacilityURN = null;
 let currentFacilityRegion = null;
 let currentModels = [];
+let cachedGroups = []; // Cache groups for dropdown
 
 // Helper functions to remember last used input values
 function saveInputValue(key, value) {
@@ -903,6 +905,47 @@ export async function renderStubs(container, facilityURN, region) {
   
   container.appendChild(propertyDropdown);
   
+  // Create Group Stubs Dropdown
+  const groupDropdown = createDropdownMenu('Group Stubs', [
+    {
+      label: 'GET Groups (All)',
+      hasInput: false,
+      action: () => groupStubs.getGroups().then(groups => {
+        // Cache groups for other dropdowns
+        cachedGroups = groups || [];
+      })
+    },
+    {
+      label: 'GET Group (by URN)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => groupStubs.getGroup(groupUrn)
+      }
+    },
+    {
+      label: 'GET Group Metrics',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => groupStubs.getGroupMetrics(groupUrn)
+      }
+    },
+    {
+      label: 'GET Facilities for Group',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => groupStubs.getFacilitiesForGroup(groupUrn)
+      }
+    }
+  ]);
+  
+  container.appendChild(groupDropdown);
+  
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
   helpDiv.className = 'mt-4 p-3 bg-dark-bg border border-dark-border rounded text-xs text-dark-text-secondary';
@@ -1056,6 +1099,35 @@ function createDropdownMenu(title, items) {
             
             mainInput.appendChild(option);
           });
+        } else if (item.inputConfig.type === 'groupSelect') {
+          // Create a dropdown for group selection
+          mainInput = document.createElement('select');
+          mainInput.className = 'w-full text-xs';
+          
+          if (cachedGroups.length === 0) {
+            // No groups cached yet - add a message
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = '-- Run "GET Groups (All)" first --';
+            mainInput.appendChild(option);
+          } else {
+            // Populate with cached groups
+            cachedGroups.forEach((group, index) => {
+              const option = document.createElement('option');
+              option.value = group.urn;
+              
+              // Show both name and URN for developer visibility
+              const displayName = group.name || 'Unnamed Group';
+              option.textContent = `${displayName} - ${group.urn}`;
+              
+              // Pre-select the first group in the list
+              if (index === 0) {
+                option.selected = true;
+              }
+              
+              mainInput.appendChild(option);
+            });
+          }
         } else {
           // Regular text input
           mainInput = document.createElement('input');
@@ -1369,6 +1441,26 @@ function createDropdownMenu(title, items) {
                 }
               }
             });
+          } else if (item.inputConfig.type === 'groupSelect') {
+            // Refresh group dropdown options from cache
+            if (mainInput.tagName.toLowerCase() === 'select') {
+              mainInput.innerHTML = '';
+              if (cachedGroups.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '-- Run "GET Groups (All)" first --';
+                mainInput.appendChild(option);
+              } else {
+                cachedGroups.forEach((group, index) => {
+                  const option = document.createElement('option');
+                  option.value = group.urn;
+                  const displayName = group.name || 'Unnamed Group';
+                  option.textContent = `${displayName} - ${group.urn}`;
+                  if (index === 0) option.selected = true;
+                  mainInput.appendChild(option);
+                });
+              }
+            }
           } else if (item.inputConfig.type !== 'modelSelect') {
             // Refresh single text input
             if (mainInput.tagName.toLowerCase() === 'input') {
