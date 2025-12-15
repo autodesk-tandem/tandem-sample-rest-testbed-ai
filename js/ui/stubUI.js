@@ -76,8 +76,19 @@ export async function renderStubs(container, facilityURN, region) {
       action: () => facilityStubs.getSubjects(currentFacilityURN, currentFacilityRegion)
     },
     {
-      label: 'GET User Access Levels',
+      label: 'GET User Access Levels (all)',
       action: () => facilityStubs.getFacilityUsers(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET User Access Level (by ID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'text',
+        label: 'User ID',
+        placeholder: 'Enter User ID (e.g., from GET Facility Subjects)',
+        defaultValue: '',
+        onExecute: (userID) => facilityStubs.getFacilityUserAccessLevel(currentFacilityURN, currentFacilityRegion, userID)
+      }
     },
     {
       label: 'GET Facility Thumbnail',
@@ -86,6 +97,28 @@ export async function renderStubs(container, facilityURN, region) {
     {
       label: 'GET Saved Views',
       action: () => facilityStubs.getSavedViews(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Saved View (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'text',
+        label: 'View UUID',
+        placeholder: 'Enter View UUID (from GET Saved Views)',
+        defaultValue: '',
+        onExecute: (viewUUID) => facilityStubs.getSavedViewByUUID(currentFacilityURN, currentFacilityRegion, viewUUID)
+      }
+    },
+    {
+      label: 'GET Saved View Thumbnail',
+      hasInput: true,
+      inputConfig: {
+        type: 'text',
+        label: 'View UUID',
+        placeholder: 'Enter View UUID (from GET Saved Views)',
+        defaultValue: '',
+        onExecute: (viewUUID) => facilityStubs.getSavedViewThumbnail(currentFacilityURN, currentFacilityRegion, viewUUID)
+      }
     }
   ]);
   
