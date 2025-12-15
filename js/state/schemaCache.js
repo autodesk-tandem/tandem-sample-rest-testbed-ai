@@ -155,3 +155,48 @@ export function areSchemasLoaded() {
   return Object.keys(schemaCache).length > 0;
 }
 
+/**
+ * Look up a property's attribute info by category and name
+ * @param {string} category - Category name (e.g., "Identity Data")
+ * @param {string} propertyName - Property name (e.g., "Mark")
+ * @returns {Object|null} Property attribute object with dataType, or null if not found
+ */
+export function getPropertyInfo(category, propertyName) {
+  for (const schema of Object.values(schemaCache)) {
+    for (const attr of schema.attributes) {
+      if (attr.category === category && attr.name === propertyName) {
+        return attr;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Data type constants for Tandem properties
+ * These match the dataType field in schema attributes
+ */
+export const DataTypes = {
+  INTEGER: 1,
+  FLOAT: 2,
+  BOOLEAN: 3,
+  STRING: 20,
+  
+  // Helper to check if a dataType is numeric
+  isNumeric: (dataType) => dataType === 1 || dataType === 2,
+  
+  // Helper to check if a dataType is boolean
+  isBoolean: (dataType) => dataType === 3,
+  
+  // Helper to get a friendly name for a dataType
+  getName: (dataType) => {
+    switch (dataType) {
+      case 1: return 'Integer';
+      case 2: return 'Float';
+      case 3: return 'Boolean';
+      case 20: return 'String';
+      default: return 'Unknown';
+    }
+  }
+};
+

@@ -14,7 +14,7 @@ import * as facilityStubs from '../stubs/facilityStubs.js';
 import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
-import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded } from '../state/schemaCache.js';
+import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, DataTypes } from '../state/schemaCache.js';
 
 // Store current facility context for STUB functions
 let currentFacilityURN = null;
@@ -105,6 +105,172 @@ function createAutocompleteSelect(field, inputForm) {
   }
   
   return select;
+}
+
+/**
+ * Create a type-aware value input that adapts based on the selected property's dataType
+ * 
+ * @param {HTMLElement} inputForm - The parent form element
+ * @param {string} categoryInputId - ID of the category input element
+ * @param {string} propertyInputId - ID of the property input element
+ * @returns {Object} Object with { container, getValue, validate }
+ */
+function createTypeAwareValueInput(inputForm, categoryInputId, propertyInputId) {
+  const container = document.createElement('div');
+  container.id = 'propValContainer';
+  container.style.marginTop = '0.5rem';
+  
+  const label = document.createElement('label');
+  label.textContent = 'Property Value';
+  label.style.display = 'block';
+  label.style.marginBottom = '0.25rem';
+  
+  const inputWrapper = document.createElement('div');
+  inputWrapper.id = 'propValInputWrapper';
+  
+  // Start with a text input
+  let currentInput = document.createElement('input');
+  currentInput.type = 'text';
+  currentInput.id = 'propVal';
+  currentInput.placeholder = 'Select a property first...';
+  currentInput.className = 'w-full text-xs';
+  inputWrapper.appendChild(currentInput);
+  
+  // Type indicator
+  const typeIndicator = document.createElement('div');
+  typeIndicator.id = 'propValTypeIndicator';
+  typeIndicator.style.fontSize = '0.65rem';
+  typeIndicator.style.color = '#6b7280';
+  typeIndicator.style.marginTop = '0.25rem';
+  typeIndicator.textContent = '';
+  
+  container.appendChild(label);
+  container.appendChild(inputWrapper);
+  container.appendChild(typeIndicator);
+  
+  // Function to update the input based on property type
+  const updateInputForProperty = () => {
+    const categoryInput = inputForm.querySelector(`#${categoryInputId}`);
+    const propertyInput = inputForm.querySelector(`#${propertyInputId}`);
+    
+    if (!categoryInput || !propertyInput) return;
+    
+    const category = categoryInput.value;
+    const propName = propertyInput.value;
+    
+    if (!category || !propName) {
+      typeIndicator.textContent = '';
+      return;
+    }
+    
+    const propInfo = getPropertyInfo(category, propName);
+    
+    // Clear wrapper and create new input
+    inputWrapper.innerHTML = '';
+    
+    if (propInfo && DataTypes.isBoolean(propInfo.dataType)) {
+      // Boolean - create dropdown
+      currentInput = document.createElement('select');
+      currentInput.id = 'propVal';
+      currentInput.className = 'w-full text-xs';
+      
+      const optTrue = document.createElement('option');
+      optTrue.value = 'true';
+      optTrue.textContent = 'True';
+      
+      const optFalse = document.createElement('option');
+      optFalse.value = 'false';
+      optFalse.textContent = 'False';
+      
+      currentInput.appendChild(optTrue);
+      currentInput.appendChild(optFalse);
+      
+      typeIndicator.textContent = '📋 Boolean property - select True or False';
+      typeIndicator.style.color = '#10b981';
+      
+    } else if (propInfo && DataTypes.isNumeric(propInfo.dataType)) {
+      // Numeric - create number input
+      currentInput = document.createElement('input');
+      currentInput.type = 'number';
+      currentInput.id = 'propVal';
+      currentInput.placeholder = 'Enter a number...';
+      currentInput.className = 'w-full text-xs';
+      currentInput.step = propInfo.dataType === DataTypes.INTEGER ? '1' : 'any';
+      
+      typeIndicator.textContent = `🔢 ${DataTypes.getName(propInfo.dataType)} property - enter a number`;
+      typeIndicator.style.color = '#3b82f6';
+      
+    } else {
+      // String or unknown - text input
+      currentInput = document.createElement('input');
+      currentInput.type = 'text';
+      currentInput.id = 'propVal';
+      currentInput.placeholder = 'Enter text value...';
+      currentInput.className = 'w-full text-xs';
+      
+      if (propInfo) {
+        typeIndicator.textContent = `📝 ${DataTypes.getName(propInfo.dataType)} property`;
+        typeIndicator.style.color = '#8b5cf6';
+      } else {
+        typeIndicator.textContent = '⚠️ Property not found in schema - using text input';
+        typeIndicator.style.color = '#f59e0b';
+      }
+    }
+    
+    inputWrapper.appendChild(currentInput);
+  };
+  
+  // Set up event listeners after the form is fully built
+  setTimeout(() => {
+    const categoryInput = inputForm.querySelector(`#${categoryInputId}`);
+    const propertyInput = inputForm.querySelector(`#${propertyInputId}`);
+    
+    if (categoryInput) {
+      categoryInput.addEventListener('change', updateInputForProperty);
+    }
+    if (propertyInput) {
+      propertyInput.addEventListener('change', updateInputForProperty);
+    }
+    
+    // Initial update
+    updateInputForProperty();
+  }, 0);
+  
+  return {
+    container,
+    getValue: () => {
+      const input = inputWrapper.querySelector('#propVal');
+      return input ? input.value : '';
+    },
+    validate: () => {
+      const categoryInput = inputForm.querySelector(`#${categoryInputId}`);
+      const propertyInput = inputForm.querySelector(`#${propertyInputId}`);
+      const input = inputWrapper.querySelector('#propVal');
+      
+      if (!categoryInput?.value || !propertyInput?.value) {
+        return { valid: false, error: 'Please select a category and property first.' };
+      }
+      
+      const propInfo = getPropertyInfo(categoryInput.value, propertyInput.value);
+      const value = input?.value;
+      
+      if (!value && value !== '0' && value !== 'false') {
+        return { valid: false, error: 'Please enter a value.' };
+      }
+      
+      if (propInfo && DataTypes.isNumeric(propInfo.dataType)) {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+          return { valid: false, error: `Please enter a valid number for this ${DataTypes.getName(propInfo.dataType)} property.` };
+        }
+        if (propInfo.dataType === DataTypes.INTEGER && !Number.isInteger(numValue)) {
+          return { valid: false, error: 'Please enter a whole number (integer) for this property.' };
+        }
+      }
+      
+      return { valid: true };
+    }
+  };
 }
 
 /**
@@ -546,11 +712,10 @@ export async function renderStubs(container, facilityURN, region) {
             autocomplete: 'property'
           },
           {
-            label: 'Property Value',
             id: 'propVal',
-            type: 'text',
-            placeholder: 'New value to set',
-            defaultValue: ''
+            type: 'typeAwareValue',
+            categoryInputId: 'propCategory',
+            propertyInputId: 'propName'
           },
           {
             label: 'Element Keys (comma-separated)',
@@ -845,6 +1010,17 @@ function createDropdownMenu(title, items) {
               inputForm.appendChild(checklistContainer);
               additionalInputs.push(checklistContainer);
               
+            } else if (fieldType === 'typeAwareValue') {
+              // Type-aware value input that adapts based on property dataType
+              const typeAwareInput = createTypeAwareValueInput(
+                inputForm, 
+                field.categoryInputId || 'propCategory', 
+                field.propertyInputId || 'propName'
+              );
+              inputForm.appendChild(typeAwareInput.container);
+              // Store the typeAwareInput object for validation and value retrieval
+              additionalInputs.push(typeAwareInput);
+              
             } else {
               // Text input field (or select for autocomplete)
               const label = document.createElement('label');
@@ -960,6 +1136,8 @@ function createDropdownMenu(title, items) {
           } else if (item.inputConfig.additionalFields) {
             // For modelSelect with additionalFields, gather values as object
             const additionalValues = {};
+            let validationError = null;
+            
             item.inputConfig.additionalFields.forEach((field, idx) => {
               const fieldType = field.type || 'text';
               const inputElement = additionalInputs[idx];
@@ -971,10 +1149,25 @@ function createDropdownMenu(title, items) {
                 const checkboxes = inputElement.querySelectorAll('input[type="checkbox"]:checked');
                 const checkedValues = Array.from(checkboxes).map(cb => cb.value);
                 additionalValues[field.id] = checkedValues.join(',');
+              } else if (fieldType === 'typeAwareValue') {
+                // Type-aware value input - validate and get value
+                const validation = inputElement.validate();
+                if (!validation.valid) {
+                  validationError = validation.error;
+                }
+                additionalValues[field.id] = inputElement.getValue();
               } else {
                 additionalValues[field.id] = inputElement.value;
               }
             });
+            
+            // Check for validation errors
+            if (validationError) {
+              console.error('Validation Error:', validationError);
+              alert(validationError);
+              return;
+            }
+            
             await item.inputConfig.onExecute(mainInput.value, additionalValues);
           } else {
             // For single field only
