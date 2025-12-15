@@ -181,11 +181,12 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Element Keys (comma-separated, optional)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Leave empty for entire model',
             defaultValue: ''
           }
         ],
-        onExecute: (modelUrn, elemKeys) => modelStubs.getModelDataFragments(modelUrn, currentFacilityRegion, elemKeys || '')
+        onExecute: (modelUrn, additionalValues) => modelStubs.getModelDataFragments(modelUrn, currentFacilityRegion, additionalValues.elemKeys || '')
       }
     }
   ]);
@@ -342,14 +343,23 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Element Keys (comma-separated, optional)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Leave empty for entire model',
             defaultValue: ''
           },
           {
-            label: 'Column Families (comma-separated)',
+            label: 'Column Families',
             id: 'colFamilies',
-            placeholder: 'e.g., n,z,l (n=Standard, z=DtProps, l=Refs)',
-            defaultValue: 'n'
+            type: 'checklist',
+            options: [
+              { value: 'n', label: 'n - Standard (name, flags, etc.)' },
+              { value: 'z', label: 'z - DtProperties (user-defined)' },
+              { value: 'l', label: 'l - Refs (same-model references)' },
+              { value: 'x', label: 'x - XRefs (cross-model references)' },
+              { value: 'm', label: 'm - Source (original model data)' },
+              { value: 's', label: 's - Systems' }
+            ],
+            defaultValue: ['n']
           },
           {
             label: 'Include History',
@@ -358,8 +368,12 @@ export async function renderStubs(container, facilityURN, region) {
             defaultValue: false
           }
         ],
-        onExecute: (modelUrn, elemKeys, colFamilies, includeHistory) => 
-          propertyStubs.getScanElementsOptions(modelUrn, currentFacilityRegion, elemKeys || '', includeHistory || false, colFamilies || '')
+        onExecute: (modelUrn, additionalValues) => {
+          const elemKeys = additionalValues.elemKeys || '';
+          const colFamilies = additionalValues.colFamilies || '';
+          const includeHistory = additionalValues.includeHistory || false;
+          return propertyStubs.getScanElementsOptions(modelUrn, currentFacilityRegion, elemKeys, includeHistory, colFamilies);
+        }
       }
     },
     {
@@ -372,12 +386,14 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Element Keys (comma-separated, optional)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Leave empty for entire model',
             defaultValue: ''
           },
           {
             label: 'Qualified Properties (comma-separated)',
             id: 'qualProps',
+            type: 'text',
             placeholder: 'e.g., z:5mQ,n:n (from GET Schema)',
             defaultValue: 'n:n'
           },
@@ -388,8 +404,8 @@ export async function renderStubs(container, facilityURN, region) {
             defaultValue: false
           }
         ],
-        onExecute: (modelUrn, elemKeys, qualProps, includeHistory) => 
-          propertyStubs.getScanElementsQualProps(modelUrn, currentFacilityRegion, elemKeys || '', includeHistory || false, qualProps || '')
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.getScanElementsQualProps(modelUrn, currentFacilityRegion, additionalValues.elemKeys || '', additionalValues.includeHistory || false, additionalValues.qualProps || '')
       }
     },
     {
@@ -402,11 +418,12 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Element Keys (comma-separated, required)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Element keys are required',
             defaultValue: ''
           }
         ],
-        onExecute: (modelUrn, elemKeys) => propertyStubs.getScanElementsFullChangeHistory(modelUrn, currentFacilityRegion, elemKeys || '')
+        onExecute: (modelUrn, additionalValues) => propertyStubs.getScanElementsFullChangeHistory(modelUrn, currentFacilityRegion, additionalValues.elemKeys || '')
       }
     },
     {
@@ -419,18 +436,20 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Classification String',
             id: 'classificationStr',
+            type: 'text',
             placeholder: 'e.g., Walls > Curtain Wall',
             defaultValue: ''
           },
           {
             label: 'Element Keys (comma-separated)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Keys of elements to update',
             defaultValue: ''
           }
         ],
-        onExecute: (modelUrn, classificationStr, elemKeys) => 
-          propertyStubs.assignClassification(currentFacilityURN, currentFacilityRegion, classificationStr || '', modelUrn, elemKeys || '')
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.assignClassification(currentFacilityURN, currentFacilityRegion, additionalValues.classificationStr || '', modelUrn, additionalValues.elemKeys || '')
       }
     },
     {
@@ -443,30 +462,34 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Category Name',
             id: 'propCategory',
+            type: 'text',
             placeholder: 'e.g., Identity Data',
             defaultValue: () => getLastInputValue('categoryName', 'Identity Data')
           },
           {
             label: 'Property Name',
             id: 'propName',
+            type: 'text',
             placeholder: 'e.g., Mark',
             defaultValue: () => getLastInputValue('propName', 'Mark')
           },
           {
             label: 'Property Value',
             id: 'propVal',
+            type: 'text',
             placeholder: 'New value to set',
             defaultValue: ''
           },
           {
             label: 'Element Keys (comma-separated)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Keys of elements to update',
             defaultValue: ''
           }
         ],
-        onExecute: (modelUrn, propCategory, propName, propVal, elemKeys) => 
-          propertyStubs.setPropertySelSet(modelUrn, currentFacilityRegion, propCategory || '', propName || '', propVal || '', elemKeys || '')
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.setPropertySelSet(modelUrn, currentFacilityRegion, additionalValues.propCategory || '', additionalValues.propName || '', additionalValues.propVal || '', additionalValues.elemKeys || '')
       }
     },
     {
@@ -479,24 +502,27 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Qualified Property ID',
             id: 'qualPropStr',
+            type: 'text',
             placeholder: 'e.g., z:5mQ (from GET Schema)',
             defaultValue: ''
           },
           {
             label: 'Property Value',
             id: 'propVal',
+            type: 'text',
             placeholder: 'New value to set',
             defaultValue: ''
           },
           {
             label: 'Element Keys (comma-separated)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Keys of elements to update',
             defaultValue: ''
           }
         ],
-        onExecute: (modelUrn, qualPropStr, propVal, elemKeys) => 
-          propertyStubs.setPropertySelSetQP(modelUrn, currentFacilityRegion, qualPropStr || '', propVal || '', elemKeys || '')
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.setPropertySelSetQP(modelUrn, currentFacilityRegion, additionalValues.qualPropStr || '', additionalValues.propVal || '', additionalValues.elemKeys || '')
       }
     }
   ]);
@@ -739,19 +765,100 @@ function createDropdownMenu(title, items) {
         // Additional fields if specified
         if (item.inputConfig.additionalFields) {
           item.inputConfig.additionalFields.forEach(field => {
-            const label = document.createElement('label');
-            label.textContent = field.label;
-            label.style.marginTop = '0.5rem';
+            const fieldType = field.type || 'text';
             
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.placeholder = field.placeholder;
-            input.value = field.defaultValue || '';
-            input.className = 'w-full text-xs';
-            
-            inputForm.appendChild(label);
-            inputForm.appendChild(input);
-            additionalInputs.push(input);
+            if (fieldType === 'checkbox') {
+              // Checkbox field
+              const checkboxContainer = document.createElement('div');
+              checkboxContainer.style.marginTop = '0.5rem';
+              checkboxContainer.style.display = 'flex';
+              checkboxContainer.style.alignItems = 'center';
+              checkboxContainer.style.gap = '0.5rem';
+              
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.id = field.id;
+              checkbox.checked = field.defaultValue || false;
+              checkbox.style.width = 'auto';
+              checkbox.style.cursor = 'pointer';
+              
+              const label = document.createElement('label');
+              label.textContent = field.label;
+              label.htmlFor = field.id;
+              label.style.margin = '0';
+              label.style.cursor = 'pointer';
+              label.style.fontSize = '0.75rem';
+              
+              checkboxContainer.appendChild(checkbox);
+              checkboxContainer.appendChild(label);
+              inputForm.appendChild(checkboxContainer);
+              additionalInputs.push(checkbox);
+              
+            } else if (fieldType === 'checklist') {
+              // Checklist field (multiple checkboxes)
+              const label = document.createElement('label');
+              label.textContent = field.label;
+              label.style.marginTop = '0.5rem';
+              inputForm.appendChild(label);
+              
+              const checklistContainer = document.createElement('div');
+              checklistContainer.id = field.id;
+              checklistContainer.style.display = 'grid';
+              checklistContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+              checklistContainer.style.gap = '0.25rem';
+              checklistContainer.style.padding = '0.5rem';
+              checklistContainer.style.background = '#2a2a2a';
+              checklistContainer.style.borderRadius = '0.25rem';
+              checklistContainer.style.marginTop = '0.25rem';
+              
+              field.options.forEach(opt => {
+                const optContainer = document.createElement('div');
+                optContainer.style.display = 'flex';
+                optContainer.style.alignItems = 'center';
+                optContainer.style.gap = '0.25rem';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = opt.value;
+                checkbox.checked = field.defaultValue?.includes(opt.value) || false;
+                checkbox.style.width = 'auto';
+                checkbox.style.cursor = 'pointer';
+                
+                const optLabel = document.createElement('label');
+                optLabel.textContent = opt.label;
+                optLabel.style.margin = '0';
+                optLabel.style.cursor = 'pointer';
+                optLabel.style.fontSize = '0.7rem';
+                optLabel.style.color = '#d1d5db';
+                
+                optContainer.appendChild(checkbox);
+                optContainer.appendChild(optLabel);
+                checklistContainer.appendChild(optContainer);
+              });
+              
+              inputForm.appendChild(checklistContainer);
+              additionalInputs.push(checklistContainer);
+              
+            } else {
+              // Text input field
+              const label = document.createElement('label');
+              label.textContent = field.label;
+              label.style.marginTop = '0.5rem';
+              
+              const input = document.createElement('input');
+              input.type = 'text';
+              input.id = field.id;
+              input.placeholder = field.placeholder || '';
+              const defaultVal = typeof field.defaultValue === 'function' 
+                ? field.defaultValue() 
+                : (field.defaultValue || '');
+              input.value = defaultVal;
+              input.className = 'w-full text-xs';
+              
+              inputForm.appendChild(label);
+              inputForm.appendChild(input);
+              additionalInputs.push(input);
+            }
           });
         }
       }
@@ -836,10 +943,28 @@ function createDropdownMenu(title, items) {
               }
             });
             await item.inputConfig.onExecute(values);
+          } else if (item.inputConfig.additionalFields) {
+            // For modelSelect with additionalFields, gather values as object
+            const additionalValues = {};
+            item.inputConfig.additionalFields.forEach((field, idx) => {
+              const fieldType = field.type || 'text';
+              const inputElement = additionalInputs[idx];
+              
+              if (fieldType === 'checkbox') {
+                additionalValues[field.id] = inputElement.checked;
+              } else if (fieldType === 'checklist') {
+                // Gather checked values from checklist
+                const checkboxes = inputElement.querySelectorAll('input[type="checkbox"]:checked');
+                const checkedValues = Array.from(checkboxes).map(cb => cb.value);
+                additionalValues[field.id] = checkedValues.join(',');
+              } else {
+                additionalValues[field.id] = inputElement.value;
+              }
+            });
+            await item.inputConfig.onExecute(mainInput.value, additionalValues);
           } else {
-            // For single field + additional fields, pass as array
-            const values = [mainInput.value, ...additionalInputs.map(inp => inp.value)];
-            await item.inputConfig.onExecute(...values);
+            // For single field only
+            await item.inputConfig.onExecute(mainInput.value);
           }
           
           // Collapse form after success
