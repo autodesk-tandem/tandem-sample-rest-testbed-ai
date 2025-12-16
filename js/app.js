@@ -441,6 +441,14 @@ if (document.readyState === 'loading') {
   initialize();
 }
 
+/**
+ * Get cached groups from user resources
+ * Returns groups from the initial getUserResources call
+ */
+export function getCachedGroups() {
+  return userResourcesCache?.groups || [];
+}
+
 // Export for use by STUB functions
 export { currentFacilityURN, currentFacilityRegion };
 

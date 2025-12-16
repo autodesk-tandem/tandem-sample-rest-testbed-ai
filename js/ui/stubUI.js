@@ -15,13 +15,24 @@ import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
 import * as groupStubs from '../stubs/groupStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
+import { getCachedGroups } from '../app.js';
 import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, getPropertyInfoByQualifiedId, DataTypes } from '../state/schemaCache.js';
 
 // Store current facility context for STUB functions
 let currentFacilityURN = null;
 let currentFacilityRegion = null;
 let currentModels = [];
-let cachedGroups = []; // Cache groups for dropdown
+let explicitGroupsCache = null; // Set when user explicitly calls GET Groups (All)
+
+/**
+ * Get groups for dropdown - uses explicit cache if available, otherwise app's cached groups
+ */
+function getGroupsForDropdown() {
+  if (explicitGroupsCache !== null) {
+    return explicitGroupsCache;
+  }
+  return getCachedGroups();
+}
 
 // Helper functions to remember last used input values
 function saveInputValue(key, value) {
@@ -911,8 +922,8 @@ export async function renderStubs(container, facilityURN, region) {
       label: 'GET Groups (All)',
       hasInput: false,
       action: () => groupStubs.getGroups().then(groups => {
-        // Cache groups for other dropdowns
-        cachedGroups = groups || [];
+        // Store in explicit cache (overrides app's cached groups)
+        explicitGroupsCache = groups || [];
       })
     },
     {
@@ -1104,15 +1115,16 @@ function createDropdownMenu(title, items) {
           mainInput = document.createElement('select');
           mainInput.className = 'w-full text-xs';
           
-          if (cachedGroups.length === 0) {
-            // No groups cached yet - add a message
+          const groups = getGroupsForDropdown();
+          if (groups.length === 0) {
+            // No groups available
             const option = document.createElement('option');
             option.value = '';
-            option.textContent = '-- Run "GET Groups (All)" first --';
+            option.textContent = '-- No groups available --';
             mainInput.appendChild(option);
           } else {
-            // Populate with cached groups
-            cachedGroups.forEach((group, index) => {
+            // Populate with groups
+            groups.forEach((group, index) => {
               const option = document.createElement('option');
               option.value = group.urn;
               
@@ -1445,13 +1457,14 @@ function createDropdownMenu(title, items) {
             // Refresh group dropdown options from cache
             if (mainInput.tagName.toLowerCase() === 'select') {
               mainInput.innerHTML = '';
-              if (cachedGroups.length === 0) {
+              const groups = getGroupsForDropdown();
+              if (groups.length === 0) {
                 const option = document.createElement('option');
                 option.value = '';
-                option.textContent = '-- Run "GET Groups (All)" first --';
+                option.textContent = '-- No groups available --';
                 mainInput.appendChild(option);
               } else {
-                cachedGroups.forEach((group, index) => {
+                groups.forEach((group, index) => {
                   const option = document.createElement('option');
                   option.value = group.urn;
                   const displayName = group.name || 'Unnamed Group';
