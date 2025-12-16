@@ -962,88 +962,72 @@ export async function renderStubs(container, facilityURN, region) {
   const streamDropdown = createDropdownMenu('Stream Stubs', [
     // === READ OPERATIONS ===
     {
-      label: 'GET Streams (from model)',
-      hasInput: true,
-      inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        onExecute: (modelUrn) => streamStubs.getStreamsFromModel(modelUrn, currentFacilityRegion)
-      }
+      label: 'GET Streams (from Default Model)',
+      hasInput: false,
+      action: () => streamStubs.getStreamsFromDefaultModel(currentFacilityURN, currentFacilityRegion)
     },
     {
       label: 'GET Stream Secrets',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Keys (comma-separated)',
             id: 'streamKeys',
-            type: 'text',
-            placeholder: 'e.g., ABC123,DEF456',
-            defaultValue: ''
+            placeholder: 'e.g., ABC123,DEF456'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.getStreamSecrets(modelUrn, currentFacilityRegion, additionalValues.streamKeys || '')
+        onExecute: (values) => 
+          streamStubs.getStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
       }
     },
     {
       label: 'GET Stream Values (30 days)',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Key',
             id: 'streamKey',
-            type: 'text',
-            placeholder: 'Single stream key',
-            defaultValue: ''
+            placeholder: 'Single stream key'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.getStreamValues(modelUrn, currentFacilityRegion, additionalValues.streamKey || '', 30)
+        onExecute: (values) => 
+          streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', 30)
       }
     },
     {
       label: 'GET Stream Values (365 days)',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Key',
             id: 'streamKey',
-            type: 'text',
-            placeholder: 'Single stream key',
-            defaultValue: ''
+            placeholder: 'Single stream key'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.getStreamValues(modelUrn, currentFacilityRegion, additionalValues.streamKey || '', 365)
+        onExecute: (values) => 
+          streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', 365)
       }
     },
     {
       label: 'GET Last Seen Stream Values',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Keys (comma-separated)',
             id: 'streamKeys',
-            type: 'text',
-            placeholder: 'e.g., ABC123,DEF456',
-            defaultValue: ''
+            placeholder: 'e.g., ABC123,DEF456'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.getLastSeenStreamValues(modelUrn, currentFacilityRegion, additionalValues.streamKeys || '')
+        onExecute: (values) => 
+          streamStubs.getLastSeenStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
       }
     },
     // === WRITE OPERATIONS ===
@@ -1051,83 +1035,70 @@ export async function renderStubs(container, facilityURN, region) {
       label: 'POST Stream Values',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Key',
             id: 'streamKey',
-            type: 'text',
-            placeholder: 'Single stream key',
-            defaultValue: ''
+            placeholder: 'Single stream key'
           },
           {
             label: 'Values (JSON)',
             id: 'valuesJson',
-            type: 'text',
             placeholder: '{"test_val1": 22.5, "test_val2": 33.0}',
             defaultValue: '{"test_val1": 22.5, "test_val2": 33.0}'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.postStreamValues(modelUrn, currentFacilityRegion, additionalValues.streamKey || '', additionalValues.valuesJson || '')
+        onExecute: (values) => 
+          streamStubs.postStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', values.valuesJson || '')
       }
     },
     {
       label: 'Reset Stream Secrets',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Keys (comma-separated)',
             id: 'streamKeys',
-            type: 'text',
-            placeholder: 'e.g., ABC123,DEF456',
-            defaultValue: ''
+            placeholder: 'e.g., ABC123,DEF456'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.resetStreamSecrets(modelUrn, currentFacilityRegion, additionalValues.streamKeys || '')
+        onExecute: (values) => 
+          streamStubs.resetStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
       }
     },
     {
       label: 'Remove Host from Stream',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Keys (comma-separated)',
             id: 'streamKeys',
-            type: 'text',
-            placeholder: 'e.g., ABC123,DEF456',
-            defaultValue: ''
+            placeholder: 'e.g., ABC123,DEF456'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.removeHostFromStream(modelUrn, currentFacilityRegion, additionalValues.streamKeys || '')
+        onExecute: (values) => 
+          streamStubs.removeHostFromStream(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
       }
     },
     {
       label: 'Delete Streams',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Keys (comma-separated)',
             id: 'streamKeys',
-            type: 'text',
-            placeholder: 'e.g., ABC123,DEF456',
-            defaultValue: ''
+            placeholder: 'e.g., ABC123,DEF456'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
-          streamStubs.deleteStreams(modelUrn, currentFacilityRegion, additionalValues.streamKeys || '')
+        onExecute: (values) => 
+          streamStubs.deleteStreams(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
       }
     },
     // === CREATE/MODIFY OPERATIONS ===
@@ -1135,46 +1106,37 @@ export async function renderStubs(container, facilityURN, region) {
       label: 'Create Stream',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Default Model (streams are created here)',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Name',
             id: 'streamName',
-            type: 'text',
-            placeholder: 'e.g., Temperature Sensor 1',
-            defaultValue: ''
+            placeholder: 'e.g., Temperature Sensor 1'
           },
           {
             label: 'Host Model URN (optional)',
             id: 'hostModelURN',
-            type: 'text',
-            placeholder: 'Leave empty for no host',
-            defaultValue: ''
+            placeholder: 'Leave empty for no host'
           },
           {
             label: 'Host Element Key (optional)',
             id: 'hostKey',
-            type: 'text',
-            placeholder: 'Leave empty for no host',
-            defaultValue: ''
+            placeholder: 'Leave empty for no host'
           },
           {
             label: 'Classification (optional)',
             id: 'classification',
-            type: 'text',
-            placeholder: 'e.g., Walls > Curtain Wall',
-            defaultValue: ''
+            placeholder: 'e.g., Walls > Curtain Wall'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
+        onExecute: (values) => 
           streamStubs.createStream(
-            modelUrn, 
+            currentFacilityURN, 
             currentFacilityRegion, 
-            additionalValues.streamName || '',
-            additionalValues.hostModelURN || '',
-            additionalValues.hostKey || '',
-            additionalValues.classification || ''
+            values.streamName || '',
+            values.hostModelURN || '',
+            values.hostKey || '',
+            values.classification || ''
           )
       }
     },
@@ -1182,38 +1144,31 @@ export async function renderStubs(container, facilityURN, region) {
       label: 'Assign Host to Stream',
       hasInput: true,
       inputConfig: {
-        type: 'modelSelect',
-        label: 'Default Model',
-        additionalFields: [
+        type: 'multiText',
+        fields: [
           {
             label: 'Stream Key',
             id: 'streamKey',
-            type: 'text',
-            placeholder: 'Key of stream to modify',
-            defaultValue: ''
+            placeholder: 'Key of stream to modify'
           },
           {
             label: 'Host Model URN',
             id: 'hostModelURN',
-            type: 'text',
-            placeholder: 'Model containing the host element',
-            defaultValue: ''
+            placeholder: 'Model containing the host element'
           },
           {
             label: 'Host Element Key',
             id: 'hostKey',
-            type: 'text',
-            placeholder: 'Element key of the host',
-            defaultValue: ''
+            placeholder: 'Element key of the host'
           }
         ],
-        onExecute: (modelUrn, additionalValues) => 
+        onExecute: (values) => 
           streamStubs.assignHostToStream(
-            modelUrn,
+            currentFacilityURN,
             currentFacilityRegion,
-            additionalValues.streamKey || '',
-            additionalValues.hostModelURN || '',
-            additionalValues.hostKey || ''
+            values.streamKey || '',
+            values.hostModelURN || '',
+            values.hostKey || ''
           )
       }
     }

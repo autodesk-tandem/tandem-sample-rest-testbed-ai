@@ -7,7 +7,7 @@
  * Output goes to browser console - open DevTools to see results.
  */
 
-import { tandemBaseURL, makeRequestOptionsGET, makeRequestOptionsPOST } from '../api.js';
+import { tandemBaseURL, makeRequestOptionsGET, makeRequestOptionsPOST, getDefaultModelURN } from '../api.js';
 import { ColumnFamilies, ColumnNames, QC, ElementFlags } from '../../tandem/constants.js';
 import { makeXrefKey } from '../../tandem/keys.js';
 
@@ -49,12 +49,15 @@ function prettyPrintLastSeenStreamValues(streamDataObj) {
 
 /**
  * Scan for streams in the default model
+ * NOTE: Streams can only exist in the default model
  */
-export async function getStreamsFromModel(modelURN, region) {
-  console.group("STUB: getStreamsFromModel()");
-  console.log("Model:", modelURN);
+export async function getStreamsFromDefaultModel(facilityURN, region) {
+  console.group("STUB: getStreamsFromDefaultModel()");
 
-  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
+
+  const requestPath = `${tandemBaseURL}/modeldata/${defaultModelURN}/scan`;
   console.log("Request:", requestPath);
 
   const bodyPayload = JSON.stringify({
@@ -84,15 +87,17 @@ export async function getStreamsFromModel(modelURN, region) {
 /**
  * Get secrets for the given streams
  */
-export async function getStreamSecrets(modelURN, region, streamKeys) {
+export async function getStreamSecrets(facilityURN, region, streamKeys) {
   console.group("STUB: getStreamSecrets()");
-  console.log("Model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
 
   const streamKeysArray = streamKeys.split(',').map(k => k.trim()).filter(k => k);
   console.log("Stream keys:", streamKeysArray);
 
   const bodyPayload = JSON.stringify({ keys: streamKeysArray });
-  const requestPath = `${tandemBaseURL}/models/${modelURN}/getstreamssecrets`;
+  const requestPath = `${tandemBaseURL}/models/${defaultModelURN}/getstreamssecrets`;
   console.log("Request:", requestPath);
 
   try {
@@ -111,15 +116,17 @@ export async function getStreamSecrets(modelURN, region, streamKeys) {
 /**
  * Reset secrets for the given streams
  */
-export async function resetStreamSecrets(modelURN, region, streamKeys) {
+export async function resetStreamSecrets(facilityURN, region, streamKeys) {
   console.group("STUB: resetStreamSecrets()");
-  console.log("Model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
 
   const streamKeysArray = streamKeys.split(',').map(k => k.trim()).filter(k => k);
   console.log("Stream keys:", streamKeysArray);
 
   const bodyPayload = JSON.stringify({ keys: streamKeysArray, hardReset: true });
-  const requestPath = `${tandemBaseURL}/models/${modelURN}/resetstreamssecrets`;
+  const requestPath = `${tandemBaseURL}/models/${defaultModelURN}/resetstreamssecrets`;
   console.log("Request:", requestPath);
 
   try {
@@ -141,9 +148,11 @@ export async function resetStreamSecrets(modelURN, region, streamKeys) {
 /**
  * Get stream values for a time range
  */
-export async function getStreamValues(modelURN, region, streamKey, daysBack) {
+export async function getStreamValues(facilityURN, region, streamKey, daysBack) {
   console.group(`STUB: getStreamValues(${daysBack} days)`);
-  console.log("Model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
   console.log("Stream key:", streamKey);
 
   const dateNow = new Date();
@@ -154,7 +163,7 @@ export async function getStreamValues(modelURN, region, streamKey, daysBack) {
   console.log("Time range:", dateStart.toISOString(), "to", dateNow.toISOString());
   console.log("NOTE: API allows any time range, plus options: &limit=N, &sort=asc|desc, &substream=XYZ");
 
-  const requestPath = `${tandemBaseURL}/timeseries/models/${modelURN}/streams/${streamKey}?from=${timestampStart}&to=${timestampEnd}`;
+  const requestPath = `${tandemBaseURL}/timeseries/models/${defaultModelURN}/streams/${streamKey}?from=${timestampStart}&to=${timestampEnd}`;
   console.log("Request:", requestPath);
 
   try {
@@ -174,15 +183,17 @@ export async function getStreamValues(modelURN, region, streamKey, daysBack) {
 /**
  * Get last seen values for streams
  */
-export async function getLastSeenStreamValues(modelURN, region, streamKeys) {
+export async function getLastSeenStreamValues(facilityURN, region, streamKeys) {
   console.group("STUB: getLastSeenStreamValues()");
-  console.log("Model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
 
   const streamKeysArray = streamKeys.split(',').map(k => k.trim()).filter(k => k);
   console.log("Stream keys:", streamKeysArray);
 
   const bodyPayload = JSON.stringify({ keys: streamKeysArray });
-  const requestPath = `${tandemBaseURL}/timeseries/models/${modelURN}/streams`;
+  const requestPath = `${tandemBaseURL}/timeseries/models/${defaultModelURN}/streams`;
   console.log("Request:", requestPath);
 
   try {
@@ -202,9 +213,11 @@ export async function getLastSeenStreamValues(modelURN, region, streamKeys) {
 /**
  * Post new values to a stream
  */
-export async function postStreamValues(modelURN, region, streamKey, valuesJson) {
+export async function postStreamValues(facilityURN, region, streamKey, valuesJson) {
   console.group("STUB: postStreamValues()");
-  console.log("Model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
   console.log("Stream key:", streamKey);
   console.log("NOTE: Values need configured parameters in Tandem to be stored long-term");
 
@@ -225,7 +238,7 @@ export async function postStreamValues(modelURN, region, streamKey, valuesJson) 
   
   console.log("Payload:", bodyPayload);
 
-  const requestPath = `${tandemBaseURL}/timeseries/models/${modelURN}/streams/${streamKey}`;
+  const requestPath = `${tandemBaseURL}/timeseries/models/${defaultModelURN}/streams/${streamKey}`;
   console.log("Request:", requestPath);
 
   try {
@@ -247,9 +260,11 @@ export async function postStreamValues(modelURN, region, streamKey, valuesJson) 
 /**
  * Create a new stream
  */
-export async function createStream(modelURN, region, streamName, hostModelURN, hostKey, classification) {
+export async function createStream(facilityURN, region, streamName, hostModelURN, hostKey, classification) {
   console.group("STUB: createStream()");
-  console.log("Default model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
   console.log("Stream name:", streamName);
 
   if (!streamName) {
@@ -287,7 +302,7 @@ export async function createStream(modelURN, region, streamName, hostModelURN, h
 
   console.log("Mutations:", mutsArray);
 
-  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/create`;
+  const requestPath = `${tandemBaseURL}/modeldata/${defaultModelURN}/create`;
   console.log("Request:", requestPath);
 
   try {
@@ -299,7 +314,7 @@ export async function createStream(modelURN, region, streamName, hostModelURN, h
     if (result.key) {
       console.log("Resetting stream secret for new stream...");
       const resetPayload = JSON.stringify({ keys: [result.key], hardReset: true });
-      const resetPath = `${tandemBaseURL}/models/${modelURN}/resetstreamssecrets`;
+      const resetPath = `${tandemBaseURL}/models/${defaultModelURN}/resetstreamssecrets`;
       const resetResponse = await fetch(resetPath, makeRequestOptionsPOST(resetPayload, region));
       if (resetResponse.ok) {
         console.log(`✓ Stream secret generated for ${result.key}`);
@@ -318,9 +333,11 @@ export async function createStream(modelURN, region, streamName, hostModelURN, h
 /**
  * Assign a host to a stream
  */
-export async function assignHostToStream(modelURN, region, streamKey, hostModelURN, hostKey) {
+export async function assignHostToStream(facilityURN, region, streamKey, hostModelURN, hostKey) {
   console.group("STUB: assignHostToStream()");
-  console.log("Default model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
   console.log("Stream key:", streamKey);
   console.log("Host model:", hostModelURN);
   console.log("Host key:", hostKey);
@@ -338,7 +355,7 @@ export async function assignHostToStream(modelURN, region, streamKey, hostModelU
 
   console.log("Payload:", bodyPayload);
 
-  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/mutate`;
+  const requestPath = `${tandemBaseURL}/modeldata/${defaultModelURN}/mutate`;
   console.log("Request:", requestPath);
 
   try {
@@ -357,9 +374,11 @@ export async function assignHostToStream(modelURN, region, streamKey, hostModelU
 /**
  * Remove host from streams
  */
-export async function removeHostFromStream(modelURN, region, streamKeys) {
+export async function removeHostFromStream(facilityURN, region, streamKeys) {
   console.group("STUB: removeHostFromStream()");
-  console.log("Default model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
 
   const streamKeysArray = streamKeys.split(',').map(k => k.trim()).filter(k => k);
   console.log("Stream keys:", streamKeysArray);
@@ -375,7 +394,7 @@ export async function removeHostFromStream(modelURN, region, streamKeys) {
     desc: "REST TestBed: removed stream host"
   });
 
-  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/mutate`;
+  const requestPath = `${tandemBaseURL}/modeldata/${defaultModelURN}/mutate`;
   console.log("Request:", requestPath);
 
   try {
@@ -394,9 +413,11 @@ export async function removeHostFromStream(modelURN, region, streamKeys) {
 /**
  * Delete streams (soft delete)
  */
-export async function deleteStreams(modelURN, region, streamKeys) {
+export async function deleteStreams(facilityURN, region, streamKeys) {
   console.group("STUB: deleteStreams()");
-  console.log("Default model:", modelURN);
+
+  const defaultModelURN = getDefaultModelURN(facilityURN);
+  console.log("Default model:", defaultModelURN);
 
   const streamKeysArray = streamKeys.split(',').map(k => k.trim()).filter(k => k);
   console.log("Stream keys:", streamKeysArray);
@@ -410,7 +431,7 @@ export async function deleteStreams(modelURN, region, streamKeys) {
     desc: "REST TestBed: deleted stream(s)"
   });
 
-  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/mutate`;
+  const requestPath = `${tandemBaseURL}/modeldata/${defaultModelURN}/mutate`;
   console.log("Request:", requestPath);
 
   try {
