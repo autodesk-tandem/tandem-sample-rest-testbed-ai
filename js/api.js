@@ -6,7 +6,7 @@
  */
 
 import { getEnv } from './config.js';
-import { RegionLabelMap } from '../tandem/constants.js';
+import { RegionLabelMap, ColumnFamilies, QC } from '../tandem/constants.js';
 
 const env = getEnv();
 
@@ -250,5 +250,179 @@ export function logResponse(data, label = 'Response') {
   if (data && typeof data === 'object' && 'length' in data) {
     console.log(`📊 Count: ${data.length} items`);
   }
+}
+
+// ============================================================================
+// SDK Utility Functions - Higher level functions for common operations
+// ============================================================================
+
+/**
+ * Scan for elements with specific qualified properties
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {Array<string>} qualProps - Array of qualified property IDs (e.g., ['n:c', 'n:n'])
+ * @param {string} region - Region
+ * @param {boolean} includeHistory - Include property history
+ * @returns {Promise<Array>} Array of elements
+ */
+export async function scanForQualifiedProperties(modelURN, qualProps, region, includeHistory = false) {
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  
+  const bodyPayload = JSON.stringify({
+    qualifiedColumns: qualProps,
+    includeHistory: includeHistory
+  });
+  
+  try {
+    const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error scanning for properties:', error);
+    return null;
+  }
+}
+
+/**
+ * Scan for all properties of specific elements
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {Array<string>} elementKeys - Element keys to scan
+ * @param {string} region - Region
+ * @param {boolean} includeHistory - Include property history
+ * @returns {Promise<Array>} Array of element properties
+ */
+export async function scanAllPropsForElements(modelURN, elementKeys, region, includeHistory = false) {
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  
+  const colFamilies = [
+    ColumnFamilies.Standard, 
+    ColumnFamilies.Refs, 
+    ColumnFamilies.Xrefs, 
+    ColumnFamilies.Source, 
+    ColumnFamilies.DtProperties
+  ];
+  
+  const bodyPayload = JSON.stringify({
+    families: colFamilies,
+    includeHistory: includeHistory,
+    keys: elementKeys
+  });
+  
+  try {
+    const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error scanning element properties:', error);
+    return null;
+  }
+}
+
+/**
+ * Get elements by keys from a model
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {Array<string>} keys - Element keys
+ * @param {string} region - Region
+ * @param {Array<string>} columnFamilies - Column families to fetch
+ * @returns {Promise<Array>} Array of elements
+ */
+export async function getElements(modelURN, keys, region, columnFamilies = [ColumnFamilies.Standard]) {
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  
+  const bodyPayload = JSON.stringify({
+    families: columnFamilies,
+    includeHistory: false,
+    skipArrays: true,
+    keys: keys
+  });
+  
+  try {
+    const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.slice(1); // Skip version row
+  } catch (error) {
+    console.error('Error fetching elements:', error);
+    return [];
+  }
+}
+
+/**
+ * Get tagged assets (elements with user-defined properties) from a model
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region
+ * @param {Array<string>} columnFamilies - Column families to fetch
+ * @returns {Promise<Array>} Array of assets
+ */
+export async function getTaggedAssets(modelURN, region, columnFamilies = [ColumnFamilies.Standard, ColumnFamilies.DtProperties, ColumnFamilies.Refs]) {
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  
+  const bodyPayload = JSON.stringify({
+    families: columnFamilies,
+    includeHistory: false,
+    skipArrays: true
+  });
+  
+  try {
+    const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    
+    // Filter to only elements with user-defined properties
+    const results = [];
+    for (const item of data) {
+      const keys = Object.keys(item);
+      const userProps = keys.filter(k => k.startsWith(`${ColumnFamilies.DtProperties}:`));
+      if (userProps.length > 0) {
+        results.push(item);
+      }
+    }
+    return results;
+  } catch (error) {
+    console.error('Error fetching tagged assets:', error);
+    return [];
+  }
+}
+
+/**
+ * Extract property values from scan results
+ * 
+ * @param {Array} rawProps - Raw scan results
+ * @param {string} qualProp - Qualified property to extract
+ * @param {boolean} returnHistory - Return full history or just current value
+ * @returns {Array} Array of {key, value} objects
+ */
+export function extractPropertyValues(rawProps, qualProp, returnHistory = false) {
+  const propValues = [];
+  
+  // Skip first element (version info)
+  for (let i = 1; i < rawProps.length; i++) {
+    const rowObj = rawProps[i];
+    if (rowObj) {
+      const key = rowObj.k;
+      const prop = rowObj[qualProp];
+      
+      if (prop) {
+        if (returnHistory) {
+          propValues.push({ key: key, value: prop });
+        } else {
+          propValues.push({ key: key, value: prop[0] });
+        }
+      }
+    }
+  }
+  
+  return propValues;
 }
 

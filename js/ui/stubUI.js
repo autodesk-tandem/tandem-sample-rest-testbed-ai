@@ -17,6 +17,7 @@ import * as groupStubs from '../stubs/groupStubs.js';
 import * as streamStubs from '../stubs/streamStubs.js';
 import * as miscStubs from '../stubs/miscStubs.js';
 import * as appStubs from '../stubs/appStubs.js';
+import * as sdkStubs from '../stubs/sdkStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
 import { getCachedGroups } from '../app.js';
 import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, getPropertyInfoByQualifiedId, DataTypes } from '../state/schemaCache.js';
@@ -1298,6 +1299,46 @@ export async function renderStubs(container, facilityURN, region) {
   ]);
   
   container.appendChild(appDropdown);
+  
+  // Create SDK Stubs Dropdown (higher-level functions)
+  const sdkDropdown = createDropdownMenu('SDK Stubs (Higher Level)', [
+    {
+      label: 'GET Rooms and Spaces',
+      hasInput: false,
+      action: () => sdkStubs.getRoomsAndSpaces(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Levels',
+      hasInput: false,
+      action: () => sdkStubs.getLevels(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Element & Type Properties',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Key',
+            id: 'elemKey',
+            type: 'text',
+            placeholder: 'Element key from a scan result',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) =>
+          sdkStubs.getElementAndTypeProperties(modelUrn, currentFacilityRegion, additionalValues.elemKey || '')
+      }
+    },
+    {
+      label: 'GET Facility Structure',
+      hasInput: false,
+      action: () => sdkStubs.getFacilityStructure(currentFacilityURN, currentFacilityRegion)
+    }
+  ]);
+  
+  container.appendChild(sdkDropdown);
   
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
