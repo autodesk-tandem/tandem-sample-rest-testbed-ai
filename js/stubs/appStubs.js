@@ -21,6 +21,11 @@ export async function getClassifications(groupURN) {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
@@ -45,6 +50,11 @@ export async function getClassificationByUUID(groupURN, classifUUID) {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
@@ -68,6 +78,11 @@ export async function getFacilityTemplates(groupURN) {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
@@ -92,6 +107,11 @@ export async function getFacilityTemplateByUUID(groupURN, templateUUID) {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
@@ -115,6 +135,11 @@ export async function getParameters(groupURN) {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
@@ -139,6 +164,11 @@ export async function getParameterByUUID(groupURN, paramUUID) {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
@@ -161,6 +191,11 @@ export async function getPreferences() {
 
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET());
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${response.statusText}`);
+      console.groupEnd();
+      return null;
+    }
     const result = await response.json();
     console.log("Result from Tandem App Server -->", result);
     console.groupEnd();
