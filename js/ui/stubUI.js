@@ -15,6 +15,8 @@ import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
 import * as groupStubs from '../stubs/groupStubs.js';
 import * as streamStubs from '../stubs/streamStubs.js';
+import * as miscStubs from '../stubs/miscStubs.js';
+import * as appStubs from '../stubs/appStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
 import { getCachedGroups } from '../app.js';
 import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, getPropertyInfoByQualifiedId, DataTypes } from '../state/schemaCache.js';
@@ -1175,6 +1177,127 @@ export async function renderStubs(container, facilityURN, region) {
   ]);
   
   container.appendChild(streamDropdown);
+  
+  // Create Miscellaneous Stubs Dropdown
+  const miscDropdown = createDropdownMenu('Miscellaneous Stubs', [
+    {
+      label: 'GET Health',
+      hasInput: false,
+      action: () => miscStubs.getHealth()
+    },
+    {
+      label: 'GET Facilities for User',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'User ID',
+            id: 'userID',
+            placeholder: 'e.g., @me or user ID from GET Facility Subjects'
+          }
+        ],
+        onExecute: (values) => miscStubs.getFacilitiesForUser(values.userID || '@me')
+      }
+    }
+  ]);
+  
+  container.appendChild(miscDropdown);
+  
+  // Create Tandem App Stubs Dropdown
+  const appDropdown = createDropdownMenu('Tandem App Stubs', [
+    {
+      label: 'GET Preferences',
+      hasInput: false,
+      action: () => appStubs.getPreferences()
+    },
+    {
+      label: 'GET Classifications',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => appStubs.getClassifications(groupUrn)
+      }
+    },
+    {
+      label: 'GET Classification (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        additionalFields: [
+          {
+            label: 'Classification UUID',
+            id: 'classifUUID',
+            type: 'text',
+            placeholder: 'UUID from GET Classifications',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (groupUrn, additionalValues) => 
+          appStubs.getClassificationByUUID(groupUrn, additionalValues.classifUUID || '')
+      }
+    },
+    {
+      label: 'GET Facility Templates',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => appStubs.getFacilityTemplates(groupUrn)
+      }
+    },
+    {
+      label: 'GET Facility Template (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        additionalFields: [
+          {
+            label: 'Template UUID',
+            id: 'templateUUID',
+            type: 'text',
+            placeholder: 'UUID from GET Facility Templates',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (groupUrn, additionalValues) => 
+          appStubs.getFacilityTemplateByUUID(groupUrn, additionalValues.templateUUID || '')
+      }
+    },
+    {
+      label: 'GET Parameters',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => appStubs.getParameters(groupUrn)
+      }
+    },
+    {
+      label: 'GET Parameter (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        additionalFields: [
+          {
+            label: 'Parameter UUID',
+            id: 'paramUUID',
+            type: 'text',
+            placeholder: 'UUID from GET Parameters',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (groupUrn, additionalValues) => 
+          appStubs.getParameterByUUID(groupUrn, additionalValues.paramUUID || '')
+      }
+    }
+  ]);
+  
+  container.appendChild(appDropdown);
   
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
