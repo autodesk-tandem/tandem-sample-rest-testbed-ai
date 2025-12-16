@@ -19,7 +19,7 @@ import * as miscStubs from '../stubs/miscStubs.js';
 import * as appStubs from '../stubs/appStubs.js';
 import * as sdkStubs from '../stubs/sdkStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
-import { getCachedGroups } from '../app.js';
+import { getCachedGroups, getCurrentGroupURN } from '../app.js';
 import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, getPropertyInfoByQualifiedId, DataTypes } from '../state/schemaCache.js';
 
 // Store current facility context for STUB functions
@@ -1506,8 +1506,16 @@ function createDropdownMenu(title, items) {
             option.textContent = '-- No groups available --';
             mainInput.appendChild(option);
           } else {
+            // Determine which group to pre-select:
+            // 1. Current account/group from header dropdown
+            // 2. Last used group (from sessionStorage)
+            // 3. First group in list
+            const currentGroupURN = getCurrentGroupURN();
+            const lastGroupURN = sessionStorage.getItem('tandem-testbed-lastGroupURN');
+            const defaultGroupURN = currentGroupURN || lastGroupURN || (groups[0]?.urn);
+            
             // Populate with groups
-            groups.forEach((group, index) => {
+            groups.forEach((group) => {
               const option = document.createElement('option');
               option.value = group.urn;
               
@@ -1515,12 +1523,17 @@ function createDropdownMenu(title, items) {
               const displayName = group.name || 'Unnamed Group';
               option.textContent = `${displayName} - ${group.urn}`;
               
-              // Pre-select the first group in the list
-              if (index === 0) {
+              // Pre-select matching group
+              if (group.urn === defaultGroupURN) {
                 option.selected = true;
               }
               
               mainInput.appendChild(option);
+            });
+            
+            // Save selection on change
+            mainInput.addEventListener('change', () => {
+              sessionStorage.setItem('tandem-testbed-lastGroupURN', mainInput.value);
             });
           }
         } else {
@@ -1839,6 +1852,8 @@ function createDropdownMenu(title, items) {
           } else if (item.inputConfig.type === 'groupSelect') {
             // Refresh group dropdown options from cache
             if (mainInput.tagName.toLowerCase() === 'select') {
+              // Remember current selection before refresh
+              const previousValue = mainInput.value;
               mainInput.innerHTML = '';
               const groups = getGroupsForDropdown();
               if (groups.length === 0) {
@@ -1847,12 +1862,17 @@ function createDropdownMenu(title, items) {
                 option.textContent = '-- No groups available --';
                 mainInput.appendChild(option);
               } else {
-                groups.forEach((group, index) => {
+                // Determine default: previous value, current account, last used, or first
+                const currentGroupURN = getCurrentGroupURN();
+                const lastGroupURN = sessionStorage.getItem('tandem-testbed-lastGroupURN');
+                const defaultGroupURN = previousValue || currentGroupURN || lastGroupURN || (groups[0]?.urn);
+                
+                groups.forEach((group) => {
                   const option = document.createElement('option');
                   option.value = group.urn;
                   const displayName = group.name || 'Unnamed Group';
                   option.textContent = `${displayName} - ${group.urn}`;
-                  if (index === 0) option.selected = true;
+                  if (group.urn === defaultGroupURN) option.selected = true;
                   mainInput.appendChild(option);
                 });
               }

@@ -449,6 +449,18 @@ export function getCachedGroups() {
   return userResourcesCache?.groups || [];
 }
 
+/**
+ * Get the current selected account/group URN
+ * Returns the URN of the currently selected account in the dropdown
+ */
+export function getCurrentGroupURN() {
+  const accountName = accountSelect.value;
+  if (!accountName) return null;
+  
+  const account = accounts.find(a => a.name === accountName);
+  return account ? account.id : null;
+}
+
 // Export for use by STUB functions
 export { currentFacilityURN, currentFacilityRegion };
 
