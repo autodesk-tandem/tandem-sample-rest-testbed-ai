@@ -356,3 +356,4 @@ export async function getFacilityStructure(facilityURN, region) {
   console.groupEnd();
 }
 
+

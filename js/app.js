@@ -14,7 +14,7 @@ import {
   registerThumbnailURL,
   cleanupThumbnailURLs
 } from './api.js';
-import { RegionLabelMap } from '../tandem/constants.js';
+import { normalizeRegion } from '../tandem/constants.js';
 import { renderStubs } from './ui/stubUI.js';
 import { loadSchemasForFacility, clearSchemaCache } from './state/schemaCache.js';
 
@@ -94,11 +94,11 @@ async function loadUserResourcesCache() {
     
     userResourcesCache = await getUserResources('@me');
     
-    // Build facility region map for quick lookups
+    // Build facility region map for quick lookups (normalize region strings from API)
     facilityRegionMap.clear();
     if (userResourcesCache?.twins) {
       userResourcesCache.twins.forEach(twin => {
-        facilityRegionMap.set(twin.urn, twin.region || 'us');
+        facilityRegionMap.set(twin.urn, normalizeRegion(twin.region));
       });
     }
     
@@ -331,8 +331,8 @@ async function loadFacility(facilityURN) {
   currentFacilityURN = facilityURN;
   
   // Get region from cache (instant lookup, no API call needed!)
-  const region = facilityRegionMap.get(facilityURN) || 'us';
-  currentFacilityRegion = RegionLabelMap[region] || 'US';
+  // Region is already normalized to 'US', 'EMEA', or 'AUS' during caching
+  currentFacilityRegion = facilityRegionMap.get(facilityURN) || 'US';
   
   toggleLoading(true);
   
