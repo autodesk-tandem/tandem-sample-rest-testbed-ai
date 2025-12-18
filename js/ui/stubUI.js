@@ -13,13 +13,30 @@
 import * as facilityStubs from '../stubs/facilityStubs.js';
 import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
+import * as groupStubs from '../stubs/groupStubs.js';
+import * as streamStubs from '../stubs/streamStubs.js';
+import * as miscStubs from '../stubs/miscStubs.js';
+import * as appStubs from '../stubs/appStubs.js';
+import * as sdkStubs from '../stubs/sdkStubs.js';
 import { getDefaultModelURN, getModels } from '../api.js';
-import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded } from '../state/schemaCache.js';
+import { getCachedGroups, getCurrentGroupURN } from '../app.js';
+import { getUniqueCategoryNames, getUniquePropertyNames, areSchemasLoaded, getPropertyInfo, getPropertyInfoByQualifiedId, DataTypes } from '../state/schemaCache.js';
 
 // Store current facility context for STUB functions
 let currentFacilityURN = null;
 let currentFacilityRegion = null;
 let currentModels = [];
+let explicitGroupsCache = null; // Set when user explicitly calls GET Groups (All)
+
+/**
+ * Get groups for dropdown - uses explicit cache if available, otherwise app's cached groups
+ */
+function getGroupsForDropdown() {
+  if (explicitGroupsCache !== null) {
+    return explicitGroupsCache;
+  }
+  return getCachedGroups();
+}
 
 // Helper functions to remember last used input values
 function saveInputValue(key, value) {
@@ -35,6 +52,381 @@ function getLastInputValue(key, defaultValue) {
 let datalistIdCounter = 0;
 function generateDatalistId() {
   return `datalist-${Date.now()}-${datalistIdCounter++}`;
+}
+
+/**
+ * Create an autocomplete select dropdown for category or property names
+ * 
+ * @param {Object} field - Field configuration with id, placeholder, defaultValue, autocomplete type
+ * @param {HTMLElement} inputForm - The parent form element (used to find related inputs)
+ * @returns {HTMLSelectElement} The configured select element
+ */
+function createAutocompleteSelect(field, inputForm) {
+  const select = document.createElement('select');
+  select.id = field.id;
+  select.className = 'w-full text-xs';
+  
+  let options = [];
+  if (field.autocomplete === 'category') {
+    options = getUniqueCategoryNames();
+  } else if (field.autocomplete === 'property') {
+    // Get properties, optionally filtered by category
+    const categoryInput = inputForm.querySelector('#propCategory') || inputForm.querySelector('#categoryName');
+    const categoryFilter = categoryInput ? categoryInput.value : null;
+    options = getUniquePropertyNames(categoryFilter);
+  }
+  
+  // Add all options (no placeholder needed - we auto-select first/last-used)
+  options.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    select.appendChild(option);
+  });
+  
+  // Set default value: prefer last-used, otherwise first option
+  const defaultValue = typeof field.defaultValue === 'function' 
+    ? field.defaultValue() 
+    : (field.defaultValue || '');
+  if (defaultValue && options.includes(defaultValue)) {
+    select.value = defaultValue;
+  } else if (options.length > 0) {
+    select.value = options[0];
+  }
+  
+  // For property dropdown, update when category changes
+  if (field.autocomplete === 'property') {
+    const categoryInput = inputForm.querySelector('#propCategory') || inputForm.querySelector('#categoryName');
+    if (categoryInput) {
+      categoryInput.addEventListener('change', () => {
+        const newOptions = getUniquePropertyNames(categoryInput.value || null);
+        select.innerHTML = '';
+        
+        // Add all options (no placeholder - we auto-select)
+        newOptions.forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt;
+          option.textContent = opt;
+          select.appendChild(option);
+        });
+        
+        // Try to select: 1) last used value if it exists in new list, or 2) first option
+        const lastUsed = getLastInputValue('propName', '');
+        if (lastUsed && newOptions.includes(lastUsed)) {
+          select.value = lastUsed;
+        } else if (newOptions.length > 0) {
+          select.value = newOptions[0];
+        }
+        
+        // Trigger change event so type-aware input updates
+        select.dispatchEvent(new Event('change'));
+      });
+    }
+  }
+  
+  // If options exist but no valid default was set, select the first option
+  if (field.autocomplete === 'property' && options.length > 0 && !select.value) {
+    const lastUsed = getLastInputValue('propName', '');
+    if (lastUsed && options.includes(lastUsed)) {
+      select.value = lastUsed;
+    } else {
+      select.value = options[0];
+    }
+  }
+  
+  return select;
+}
+
+/**
+ * Shared helper to render a type-aware input element based on property info
+ * 
+ * @param {Object} propInfo - Property info object from schema
+ * @param {HTMLElement} inputWrapper - Container for the input
+ * @param {HTMLElement} typeIndicator - Element to show type info
+ * @returns {HTMLElement} The created input element
+ */
+function renderTypeAwareInput(propInfo, inputWrapper, typeIndicator) {
+  inputWrapper.innerHTML = '';
+  let inputElement;
+  
+  if (propInfo && DataTypes.isBoolean(propInfo)) {
+    // Boolean - create dropdown
+    inputElement = document.createElement('select');
+    inputElement.id = 'propVal';
+    inputElement.className = 'w-full text-xs';
+    
+    const optTrue = document.createElement('option');
+    optTrue.value = 'true';
+    optTrue.textContent = 'True';
+    
+    const optFalse = document.createElement('option');
+    optFalse.value = 'false';
+    optFalse.textContent = 'False';
+    
+    inputElement.appendChild(optTrue);
+    inputElement.appendChild(optFalse);
+    
+    typeIndicator.textContent = '📋 Boolean property - select True or False';
+    typeIndicator.style.color = '#10b981';
+    
+  } else if (propInfo && DataTypes.isNumeric(propInfo)) {
+    // Numeric - create number input
+    inputElement = document.createElement('input');
+    inputElement.type = 'number';
+    inputElement.id = 'propVal';
+    inputElement.placeholder = 'Enter a number...';
+    inputElement.className = 'w-full text-xs';
+    inputElement.step = propInfo.dataType === 2 ? '1' : 'any'; // dataType 2 = Integer
+    
+    typeIndicator.textContent = `🔢 ${DataTypes.getName(propInfo)} property - enter a number`;
+    typeIndicator.style.color = '#3b82f6';
+    
+  } else {
+    // String or unknown - text input
+    inputElement = document.createElement('input');
+    inputElement.type = 'text';
+    inputElement.id = 'propVal';
+    inputElement.placeholder = 'Enter text value...';
+    inputElement.className = 'w-full text-xs';
+    
+    if (propInfo) {
+      typeIndicator.textContent = `📝 ${DataTypes.getName(propInfo)} property`;
+      typeIndicator.style.color = '#8b5cf6';
+    } else {
+      typeIndicator.textContent = '⚠️ Property not found in schema - using text input';
+      typeIndicator.style.color = '#f59e0b';
+    }
+  }
+  
+  inputWrapper.appendChild(inputElement);
+  return inputElement;
+}
+
+/**
+ * Create a type-aware value input that adapts based on the selected property's dataType
+ * 
+ * @param {HTMLElement} inputForm - The parent form element
+ * @param {string} categoryInputId - ID of the category input element
+ * @param {string} propertyInputId - ID of the property input element
+ * @returns {Object} Object with { container, getValue, validate }
+ */
+function createTypeAwareValueInput(inputForm, categoryInputId, propertyInputId) {
+  const container = document.createElement('div');
+  container.id = 'propValContainer';
+  container.style.marginTop = '0.5rem';
+  
+  const label = document.createElement('label');
+  label.textContent = 'Property Value';
+  label.style.display = 'block';
+  label.style.marginBottom = '0.25rem';
+  
+  const inputWrapper = document.createElement('div');
+  inputWrapper.id = 'propValInputWrapper';
+  
+  // Start with a text input
+  let currentInput = document.createElement('input');
+  currentInput.type = 'text';
+  currentInput.id = 'propVal';
+  currentInput.placeholder = 'Select a property first...';
+  currentInput.className = 'w-full text-xs';
+  inputWrapper.appendChild(currentInput);
+  
+  // Type indicator
+  const typeIndicator = document.createElement('div');
+  typeIndicator.id = 'propValTypeIndicator';
+  typeIndicator.style.fontSize = '0.65rem';
+  typeIndicator.style.color = '#6b7280';
+  typeIndicator.style.marginTop = '0.25rem';
+  typeIndicator.textContent = '';
+  
+  container.appendChild(label);
+  container.appendChild(inputWrapper);
+  container.appendChild(typeIndicator);
+  
+  // Function to update the input based on property type
+  const updateInputForProperty = () => {
+    const categoryInput = inputForm.querySelector(`#${categoryInputId}`);
+    const propertyInput = inputForm.querySelector(`#${propertyInputId}`);
+    
+    if (!categoryInput || !propertyInput) return;
+    
+    const category = categoryInput.value;
+    const propName = propertyInput.value;
+    
+    if (!category || !propName) {
+      typeIndicator.textContent = '';
+      return;
+    }
+    
+    const propInfo = getPropertyInfo(category, propName);
+    currentInput = renderTypeAwareInput(propInfo, inputWrapper, typeIndicator);
+  };
+  
+  // Set up event listeners using event delegation on the form
+  // This ensures we catch events even if the select elements are rebuilt
+  inputForm.addEventListener('change', (event) => {
+    const targetId = event.target.id;
+    if (targetId === categoryInputId || targetId === propertyInputId) {
+      updateInputForProperty();
+    }
+  });
+  
+  // Initial update after a brief delay to ensure all elements are ready
+  setTimeout(() => {
+    updateInputForProperty();
+  }, 50);
+  
+  return {
+    container,
+    getValue: () => {
+      const input = inputWrapper.querySelector('#propVal');
+      return input ? input.value : '';
+    },
+    validate: () => {
+      const categoryInput = inputForm.querySelector(`#${categoryInputId}`);
+      const propertyInput = inputForm.querySelector(`#${propertyInputId}`);
+      const input = inputWrapper.querySelector('#propVal');
+      
+      if (!categoryInput?.value || !propertyInput?.value) {
+        return { valid: false, error: 'Please select a category and property first.' };
+      }
+      
+      const propInfo = getPropertyInfo(categoryInput.value, propertyInput.value);
+      const value = input?.value;
+      
+      if (!value && value !== '0' && value !== 'false') {
+        return { valid: false, error: 'Please enter a value.' };
+      }
+      
+      // Use full propInfo object for type checking (handles unit-based types)
+      if (propInfo && DataTypes.isNumeric(propInfo)) {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+          return { valid: false, error: `Please enter a valid number for this ${DataTypes.getName(propInfo)} property.` };
+        }
+        if (propInfo.dataType === 2 && !Number.isInteger(numValue)) {
+          return { valid: false, error: 'Please enter a whole number (integer) for this property.' };
+        }
+      }
+      
+      return { valid: true };
+    }
+  };
+}
+
+/**
+ * Create a type-aware value input that adapts based on a qualified property ID
+ * Watches a text input for the qualified prop and updates the value input type accordingly.
+ * 
+ * @param {HTMLElement} inputForm - The parent form element
+ * @param {string} qualPropInputId - ID of the qualified property text input element
+ * @returns {Object} Object with { container, getValue, validate }
+ */
+function createTypeAwareValueInputByQualifiedProp(inputForm, qualPropInputId) {
+  const container = document.createElement('div');
+  container.id = 'propValContainer';
+  container.style.marginTop = '0.5rem';
+  
+  const label = document.createElement('label');
+  label.textContent = 'Property Value';
+  label.style.display = 'block';
+  label.style.marginBottom = '0.25rem';
+  
+  const inputWrapper = document.createElement('div');
+  inputWrapper.id = 'propValInputWrapper';
+  
+  // Start with a text input
+  let currentInput = document.createElement('input');
+  currentInput.type = 'text';
+  currentInput.id = 'propVal';
+  currentInput.placeholder = 'Enter qualified prop ID first...';
+  currentInput.className = 'w-full text-xs';
+  inputWrapper.appendChild(currentInput);
+  
+  // Type indicator
+  const typeIndicator = document.createElement('div');
+  typeIndicator.id = 'propValTypeIndicator';
+  typeIndicator.style.fontSize = '0.65rem';
+  typeIndicator.style.color = '#6b7280';
+  typeIndicator.style.marginTop = '0.25rem';
+  typeIndicator.textContent = '';
+  
+  container.appendChild(label);
+  container.appendChild(inputWrapper);
+  container.appendChild(typeIndicator);
+  
+  // Function to update the input based on property type
+  const updateInputForQualifiedProp = () => {
+    const qualPropInput = inputForm.querySelector(`#${qualPropInputId}`);
+    
+    if (!qualPropInput) return;
+    
+    const qualPropId = qualPropInput.value.trim();
+    
+    if (!qualPropId) {
+      typeIndicator.textContent = '';
+      return;
+    }
+    
+    const propInfo = getPropertyInfoByQualifiedId(qualPropId);
+    currentInput = renderTypeAwareInput(propInfo, inputWrapper, typeIndicator);
+  };
+  
+  // Watch for changes on the qualified prop input (blur and input events)
+  inputForm.addEventListener('blur', (event) => {
+    if (event.target.id === qualPropInputId) {
+      updateInputForQualifiedProp();
+    }
+  }, true); // Use capture to catch blur
+  
+  inputForm.addEventListener('input', (event) => {
+    if (event.target.id === qualPropInputId) {
+      // Debounce - only update after user stops typing
+      clearTimeout(inputForm._qualPropDebounce);
+      inputForm._qualPropDebounce = setTimeout(updateInputForQualifiedProp, 300);
+    }
+  });
+  
+  // Initial update after a brief delay
+  setTimeout(() => {
+    updateInputForQualifiedProp();
+  }, 50);
+  
+  return {
+    container,
+    getValue: () => {
+      const input = inputWrapper.querySelector('#propVal');
+      return input ? input.value : '';
+    },
+    validate: () => {
+      const qualPropInput = inputForm.querySelector(`#${qualPropInputId}`);
+      const input = inputWrapper.querySelector('#propVal');
+      
+      if (!qualPropInput?.value) {
+        return { valid: false, error: 'Please enter a qualified property ID first.' };
+      }
+      
+      const propInfo = getPropertyInfoByQualifiedId(qualPropInput.value.trim());
+      const value = input?.value;
+      
+      if (!value && value !== '0' && value !== 'false') {
+        return { valid: false, error: 'Please enter a value.' };
+      }
+      
+      // Type validation
+      if (propInfo && DataTypes.isNumeric(propInfo)) {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+          return { valid: false, error: `Please enter a valid number for this ${DataTypes.getName(propInfo)} property.` };
+        }
+        if (propInfo.dataType === 2 && !Number.isInteger(numValue)) {
+          return { valid: false, error: 'Please enter a whole number (integer) for this property.' };
+        }
+      }
+      
+      return { valid: true };
+    }
+  };
 }
 
 /**
@@ -76,8 +468,19 @@ export async function renderStubs(container, facilityURN, region) {
       action: () => facilityStubs.getSubjects(currentFacilityURN, currentFacilityRegion)
     },
     {
-      label: 'GET User Access Levels',
+      label: 'GET User Access Levels (all)',
       action: () => facilityStubs.getFacilityUsers(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET User Access Level (by ID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'text',
+        label: 'User ID',
+        placeholder: 'Enter User ID (e.g., from GET Facility Subjects)',
+        defaultValue: '',
+        onExecute: (userID) => facilityStubs.getFacilityUserAccessLevel(currentFacilityURN, currentFacilityRegion, userID)
+      }
     },
     {
       label: 'GET Facility Thumbnail',
@@ -86,6 +489,28 @@ export async function renderStubs(container, facilityURN, region) {
     {
       label: 'GET Saved Views',
       action: () => facilityStubs.getSavedViews(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Saved View (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'text',
+        label: 'View UUID',
+        placeholder: 'Enter View UUID (from GET Saved Views)',
+        defaultValue: '',
+        onExecute: (viewUUID) => facilityStubs.getSavedViewByUUID(currentFacilityURN, currentFacilityRegion, viewUUID)
+      }
+    },
+    {
+      label: 'GET Saved View Thumbnail',
+      hasInput: true,
+      inputConfig: {
+        type: 'text',
+        label: 'View UUID',
+        placeholder: 'Enter View UUID (from GET Saved Views)',
+        defaultValue: '',
+        onExecute: (viewUUID) => facilityStubs.getSavedViewThumbnail(currentFacilityURN, currentFacilityRegion, viewUUID)
+      }
     }
   ]);
   
@@ -148,11 +573,12 @@ export async function renderStubs(container, facilityURN, region) {
           {
             label: 'Element Keys (comma-separated, optional)',
             id: 'elemKeys',
+            type: 'text',
             placeholder: 'Leave empty for entire model',
             defaultValue: ''
           }
         ],
-        onExecute: (modelUrn, elemKeys) => modelStubs.getModelDataFragments(modelUrn, currentFacilityRegion, elemKeys || '')
+        onExecute: (modelUrn, additionalValues) => modelStubs.getModelDataFragments(modelUrn, currentFacilityRegion, additionalValues.elemKeys || '')
       }
     }
   ]);
@@ -289,10 +715,630 @@ export async function renderStubs(container, facilityURN, region) {
           );
         }
       }
+    },
+    {
+      label: 'SCAN Brute Force (full model)',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        onExecute: (modelUrn) => propertyStubs.getScanBruteForce(modelUrn, currentFacilityRegion)
+      }
+    },
+    {
+      label: 'SCAN with Options',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, optional)',
+            id: 'elemKeys',
+            type: 'text',
+            placeholder: 'Leave empty for entire model',
+            defaultValue: ''
+          },
+          {
+            label: 'Column Families',
+            id: 'colFamilies',
+            type: 'checklist',
+            options: [
+              { value: 'n', label: 'n - Standard (name, flags, etc.)' },
+              { value: 'z', label: 'z - DtProperties (user-defined)' },
+              { value: 'l', label: 'l - Refs (same-model references)' },
+              { value: 'x', label: 'x - XRefs (cross-model references)' },
+              { value: 'm', label: 'm - Source (original model data)' },
+              { value: 's', label: 's - Systems' }
+            ],
+            defaultValue: ['n']
+          },
+          {
+            label: 'Include History',
+            id: 'includeHistory',
+            type: 'checkbox',
+            defaultValue: false
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) => {
+          const elemKeys = additionalValues.elemKeys || '';
+          const colFamilies = additionalValues.colFamilies || '';
+          const includeHistory = additionalValues.includeHistory || false;
+          return propertyStubs.getScanElementsOptions(modelUrn, currentFacilityRegion, elemKeys, includeHistory, colFamilies);
+        }
+      }
+    },
+    {
+      label: 'SCAN with Qualified Props',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, optional)',
+            id: 'elemKeys',
+            type: 'text',
+            placeholder: 'Leave empty for entire model',
+            defaultValue: ''
+          },
+          {
+            label: 'Qualified Properties (comma-separated)',
+            id: 'qualProps',
+            type: 'text',
+            placeholder: 'e.g., z:5mQ,n:n (from GET Schema)',
+            defaultValue: 'n:n'
+          },
+          {
+            label: 'Include History',
+            id: 'includeHistory',
+            type: 'checkbox',
+            defaultValue: false
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.getScanElementsQualProps(modelUrn, currentFacilityRegion, additionalValues.elemKeys || '', additionalValues.includeHistory || false, additionalValues.qualProps || '')
+      }
+    },
+    {
+      label: 'SCAN Full Change History',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Keys (comma-separated, required)',
+            id: 'elemKeys',
+            type: 'text',
+            placeholder: 'Element keys are required',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) => propertyStubs.getScanElementsFullChangeHistory(modelUrn, currentFacilityRegion, additionalValues.elemKeys || '')
+      }
+    },
+    {
+      label: 'Assign Classification',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Classification String',
+            id: 'classificationStr',
+            type: 'text',
+            placeholder: 'e.g., Walls > Curtain Wall',
+            defaultValue: ''
+          },
+          {
+            label: 'Element Keys (comma-separated)',
+            id: 'elemKeys',
+            type: 'text',
+            placeholder: 'Keys of elements to update',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.assignClassification(currentFacilityURN, currentFacilityRegion, additionalValues.classificationStr || '', modelUrn, additionalValues.elemKeys || '')
+      }
+    },
+    {
+      label: 'SET Property (by Category/Name)',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Category Name',
+            id: 'propCategory',
+            type: 'text',
+            placeholder: 'e.g., Identity Data',
+            defaultValue: () => getLastInputValue('categoryName', 'Identity Data'),
+            autocomplete: 'category'
+          },
+          {
+            label: 'Property Name',
+            id: 'propName',
+            type: 'text',
+            placeholder: 'e.g., Mark',
+            defaultValue: () => getLastInputValue('propName', 'Mark'),
+            autocomplete: 'property'
+          },
+          {
+            id: 'propVal',
+            type: 'typeAwareValue',
+            categoryInputId: 'propCategory',
+            propertyInputId: 'propName'
+          },
+          {
+            label: 'Element Keys (comma-separated)',
+            id: 'elemKeys',
+            type: 'text',
+            placeholder: 'Keys of elements to update',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.setPropertySelSet(modelUrn, currentFacilityRegion, additionalValues.propCategory || '', additionalValues.propName || '', additionalValues.propVal || '', additionalValues.elemKeys || '')
+      }
+    },
+    {
+      label: 'SET Property (by Qualified Prop)',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Qualified Property ID',
+            id: 'qualPropStr',
+            type: 'text',
+            placeholder: 'e.g., z:5mQ (from GET Schema)',
+            defaultValue: ''
+          },
+          {
+            id: 'propVal',
+            type: 'typeAwareValueByQualifiedProp',
+            qualPropInputId: 'qualPropStr'
+          },
+          {
+            label: 'Element Keys (comma-separated)',
+            id: 'elemKeys',
+            type: 'text',
+            placeholder: 'Keys of elements to update',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) => 
+          propertyStubs.setPropertySelSetQP(modelUrn, currentFacilityRegion, additionalValues.qualPropStr || '', additionalValues.propVal || '', additionalValues.elemKeys || '')
+      }
     }
   ]);
   
   container.appendChild(propertyDropdown);
+  
+  // Create Group Stubs Dropdown
+  const groupDropdown = createDropdownMenu('Group Stubs', [
+    {
+      label: 'GET Groups (All)',
+      hasInput: false,
+      action: () => groupStubs.getGroups().then(groups => {
+        // Store in explicit cache (overrides app's cached groups)
+        explicitGroupsCache = groups || [];
+      })
+    },
+    {
+      label: 'GET Group (by URN)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => groupStubs.getGroup(groupUrn)
+      }
+    },
+    {
+      label: 'GET Group Metrics',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => groupStubs.getGroupMetrics(groupUrn)
+      }
+    },
+    {
+      label: 'GET Facilities for Group',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => groupStubs.getFacilitiesForGroup(groupUrn)
+      }
+    }
+  ]);
+  
+  container.appendChild(groupDropdown);
+  
+  // Create Stream Stubs Dropdown
+  const streamDropdown = createDropdownMenu('Stream Stubs', [
+    // === READ OPERATIONS ===
+    {
+      label: 'GET Streams (from Default Model)',
+      hasInput: false,
+      action: () => streamStubs.getStreamsFromDefaultModel(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Stream Secrets',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.getStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    {
+      label: 'GET Stream Values (30 days)',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Key',
+            id: 'streamKey',
+            placeholder: 'Single stream key'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', 30)
+      }
+    },
+    {
+      label: 'GET Stream Values (365 days)',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Key',
+            id: 'streamKey',
+            placeholder: 'Single stream key'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', 365)
+      }
+    },
+    {
+      label: 'GET Last Seen Stream Values',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.getLastSeenStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    // === WRITE OPERATIONS ===
+    {
+      label: 'POST Stream Values',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Key',
+            id: 'streamKey',
+            placeholder: 'Single stream key'
+          },
+          {
+            label: 'Values (JSON)',
+            id: 'valuesJson',
+            placeholder: '{"test_val1": 22.5, "test_val2": 33.0}',
+            defaultValue: '{"test_val1": 22.5, "test_val2": 33.0}'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.postStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', values.valuesJson || '')
+      }
+    },
+    {
+      label: 'Reset Stream Secrets',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.resetStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    {
+      label: 'Remove Host from Stream',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.removeHostFromStream(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    {
+      label: 'Delete Streams',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.deleteStreams(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    // === CREATE/MODIFY OPERATIONS ===
+    {
+      label: 'Create Stream',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Name',
+            id: 'streamName',
+            placeholder: 'e.g., Temperature Sensor 1'
+          },
+          {
+            label: 'Host Model URN (optional)',
+            id: 'hostModelURN',
+            placeholder: 'Leave empty for no host'
+          },
+          {
+            label: 'Host Element Key (optional)',
+            id: 'hostKey',
+            placeholder: 'Leave empty for no host'
+          },
+          {
+            label: 'Classification (optional)',
+            id: 'classification',
+            placeholder: 'e.g., Walls > Curtain Wall'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.createStream(
+            currentFacilityURN, 
+            currentFacilityRegion, 
+            values.streamName || '',
+            values.hostModelURN || '',
+            values.hostKey || '',
+            values.classification || ''
+          )
+      }
+    },
+    {
+      label: 'Assign Host to Stream',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Key',
+            id: 'streamKey',
+            placeholder: 'Key of stream to modify'
+          },
+          {
+            label: 'Host Model URN',
+            id: 'hostModelURN',
+            placeholder: 'Model containing the host element'
+          },
+          {
+            label: 'Host Element Key',
+            id: 'hostKey',
+            placeholder: 'Element key of the host'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.assignHostToStream(
+            currentFacilityURN,
+            currentFacilityRegion,
+            values.streamKey || '',
+            values.hostModelURN || '',
+            values.hostKey || ''
+          )
+      }
+    }
+  ]);
+  
+  container.appendChild(streamDropdown);
+  
+  // Create Miscellaneous Stubs Dropdown
+  const miscDropdown = createDropdownMenu('Miscellaneous Stubs', [
+    {
+      label: 'GET Health',
+      hasInput: false,
+      action: () => miscStubs.getHealth()
+    },
+    {
+      label: 'GET Facilities for User',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'User ID',
+            id: 'userID',
+            placeholder: 'e.g., @me or user ID from GET Facility Subjects'
+          }
+        ],
+        onExecute: (values) => miscStubs.getFacilitiesForUser(values.userID || '@me')
+      }
+    }
+  ]);
+  
+  container.appendChild(miscDropdown);
+  
+  // Create Tandem App Stubs Dropdown
+  const appDropdown = createDropdownMenu('Tandem App Stubs', [
+    {
+      label: 'GET Preferences',
+      hasInput: false,
+      action: () => appStubs.getPreferences()
+    },
+    {
+      label: 'GET Classifications',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => appStubs.getClassifications(groupUrn)
+      }
+    },
+    {
+      label: 'GET Classification (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        additionalFields: [
+          {
+            label: 'Classification UUID',
+            id: 'classifUUID',
+            type: 'text',
+            placeholder: 'UUID from GET Classifications',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (groupUrn, additionalValues) => 
+          appStubs.getClassificationByUUID(groupUrn, additionalValues.classifUUID || '')
+      }
+    },
+    {
+      label: 'GET Facility Templates',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => appStubs.getFacilityTemplates(groupUrn)
+      }
+    },
+    {
+      label: 'GET Facility Template (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        additionalFields: [
+          {
+            label: 'Template UUID',
+            id: 'templateUUID',
+            type: 'text',
+            placeholder: 'UUID from GET Facility Templates',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (groupUrn, additionalValues) => 
+          appStubs.getFacilityTemplateByUUID(groupUrn, additionalValues.templateUUID || '')
+      }
+    },
+    {
+      label: 'GET Parameters',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        onExecute: (groupUrn) => appStubs.getParameters(groupUrn)
+      }
+    },
+    {
+      label: 'GET Parameter (by UUID)',
+      hasInput: true,
+      inputConfig: {
+        type: 'groupSelect',
+        label: 'Group',
+        additionalFields: [
+          {
+            label: 'Parameter UUID',
+            id: 'paramUUID',
+            type: 'text',
+            placeholder: 'UUID from GET Parameters',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (groupUrn, additionalValues) => 
+          appStubs.getParameterByUUID(groupUrn, additionalValues.paramUUID || '')
+      }
+    }
+  ]);
+  
+  container.appendChild(appDropdown);
+  
+  // Create SDK Stubs Dropdown (higher-level functions)
+  const sdkDropdown = createDropdownMenu('SDK Stubs (Higher Level)', [
+    {
+      label: 'GET Rooms and Spaces',
+      hasInput: false,
+      action: () => sdkStubs.getRoomsAndSpaces(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Levels',
+      hasInput: false,
+      action: () => sdkStubs.getLevels(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Element & Type Properties',
+      hasInput: true,
+      inputConfig: {
+        type: 'modelSelect',
+        label: 'Model',
+        additionalFields: [
+          {
+            label: 'Element Key',
+            id: 'elemKey',
+            type: 'text',
+            placeholder: 'Element key from a scan result',
+            defaultValue: ''
+          }
+        ],
+        onExecute: (modelUrn, additionalValues) =>
+          sdkStubs.getElementAndTypeProperties(modelUrn, currentFacilityRegion, additionalValues.elemKey || '')
+      }
+    },
+    {
+      label: 'GET Facility Structure',
+      hasInput: false,
+      action: () => sdkStubs.getFacilityStructure(currentFacilityURN, currentFacilityRegion)
+    }
+  ]);
+  
+  container.appendChild(sdkDropdown);
   
   // Add a help message at the bottom
   const helpDiv = document.createElement('div');
@@ -395,69 +1441,7 @@ function createDropdownMenu(title, items) {
             
             // Use select dropdown for autocomplete if schemas are loaded
             if (field.autocomplete && areSchemasLoaded()) {
-              console.log(`Adding autocomplete dropdown for ${field.id}, type: ${field.autocomplete}`);
-              
-              input = document.createElement('select');
-              input.id = field.id;
-              input.className = 'w-full text-xs';
-              
-              let options = [];
-              if (field.autocomplete === 'category') {
-                options = getUniqueCategoryNames();
-                console.log(`  Found ${options.length} unique categories`);
-              } else if (field.autocomplete === 'property') {
-                // Get properties, optionally filtered by category
-                const categoryInput = inputForm.querySelector('#categoryName');
-                const categoryFilter = categoryInput ? categoryInput.value : null;
-                options = getUniquePropertyNames(categoryFilter);
-                console.log(`  Found ${options.length} unique properties`);
-              }
-              
-              // Add a default "Select..." option
-              const defaultOption = document.createElement('option');
-              defaultOption.value = '';
-              defaultOption.textContent = field.placeholder || 'Select...';
-              input.appendChild(defaultOption);
-              
-              // Add all options
-              options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt;
-                option.textContent = opt;
-                input.appendChild(option);
-              });
-              
-              // Set default value if provided
-              const defaultValue = typeof field.defaultValue === 'function' 
-                ? field.defaultValue() 
-                : (field.defaultValue || '');
-              if (defaultValue && options.includes(defaultValue)) {
-                input.value = defaultValue;
-              }
-              
-              // For property dropdown, update when category changes
-              if (field.autocomplete === 'property') {
-                const categoryInput = inputForm.querySelector('#categoryName');
-                if (categoryInput) {
-                  categoryInput.addEventListener('change', () => {
-                    const newOptions = getUniquePropertyNames(categoryInput.value || null);
-                    input.innerHTML = '';
-                    
-                    const defaultOpt = document.createElement('option');
-                    defaultOpt.value = '';
-                    defaultOpt.textContent = field.placeholder || 'Select...';
-                    input.appendChild(defaultOpt);
-                    
-                    newOptions.forEach(opt => {
-                      const option = document.createElement('option');
-                      option.value = opt;
-                      option.textContent = opt;
-                      input.appendChild(option);
-                    });
-                    console.log(`  Property list updated: ${newOptions.length} options for category "${categoryInput.value}"`);
-                  });
-                }
-              }
+              input = createAutocompleteSelect(field, inputForm);
             } else {
               // Regular text input (fallback when schemas not loaded)
               input = document.createElement('input');
@@ -468,10 +1452,6 @@ function createDropdownMenu(title, items) {
                 ? field.defaultValue() 
                 : (field.defaultValue || '');
               input.className = 'w-full text-xs';
-              
-              if (field.autocomplete) {
-                console.log(`Autocomplete requested for ${field.id} but schemas not loaded yet - using text input`);
-              }
             }
             
             inputForm.appendChild(label);
@@ -513,6 +1493,49 @@ function createDropdownMenu(title, items) {
             
             mainInput.appendChild(option);
           });
+        } else if (item.inputConfig.type === 'groupSelect') {
+          // Create a dropdown for group selection
+          mainInput = document.createElement('select');
+          mainInput.className = 'w-full text-xs';
+          
+          const groups = getGroupsForDropdown();
+          if (groups.length === 0) {
+            // No groups available
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = '-- No groups available --';
+            mainInput.appendChild(option);
+          } else {
+            // Determine which group to pre-select:
+            // 1. Current account/group from header dropdown
+            // 2. Last used group (from sessionStorage)
+            // 3. First group in list
+            const currentGroupURN = getCurrentGroupURN();
+            const lastGroupURN = sessionStorage.getItem('tandem-testbed-lastGroupURN');
+            const defaultGroupURN = currentGroupURN || lastGroupURN || (groups[0]?.urn);
+            
+            // Populate with groups
+            groups.forEach((group) => {
+              const option = document.createElement('option');
+              option.value = group.urn;
+              
+              // Show both name and URN for developer visibility
+              const displayName = group.name || 'Unnamed Group';
+              option.textContent = `${displayName} - ${group.urn}`;
+              
+              // Pre-select matching group
+              if (group.urn === defaultGroupURN) {
+                option.selected = true;
+              }
+              
+              mainInput.appendChild(option);
+            });
+            
+            // Save selection on change
+            mainInput.addEventListener('change', () => {
+              sessionStorage.setItem('tandem-testbed-lastGroupURN', mainInput.value);
+            });
+          }
         } else {
           // Regular text input
           mainInput = document.createElement('input');
@@ -530,19 +1553,129 @@ function createDropdownMenu(title, items) {
         // Additional fields if specified
         if (item.inputConfig.additionalFields) {
           item.inputConfig.additionalFields.forEach(field => {
-            const label = document.createElement('label');
-            label.textContent = field.label;
-            label.style.marginTop = '0.5rem';
+            const fieldType = field.type || 'text';
             
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.placeholder = field.placeholder;
-            input.value = field.defaultValue || '';
-            input.className = 'w-full text-xs';
-            
-            inputForm.appendChild(label);
-            inputForm.appendChild(input);
-            additionalInputs.push(input);
+            if (fieldType === 'checkbox') {
+              // Checkbox field
+              const checkboxContainer = document.createElement('div');
+              checkboxContainer.style.marginTop = '0.5rem';
+              checkboxContainer.style.display = 'flex';
+              checkboxContainer.style.alignItems = 'center';
+              checkboxContainer.style.gap = '0.5rem';
+              
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.id = field.id;
+              checkbox.checked = field.defaultValue || false;
+              checkbox.style.width = 'auto';
+              checkbox.style.cursor = 'pointer';
+              
+              const label = document.createElement('label');
+              label.textContent = field.label;
+              label.htmlFor = field.id;
+              label.style.margin = '0';
+              label.style.cursor = 'pointer';
+              label.style.fontSize = '0.75rem';
+              
+              checkboxContainer.appendChild(checkbox);
+              checkboxContainer.appendChild(label);
+              inputForm.appendChild(checkboxContainer);
+              additionalInputs.push(checkbox);
+              
+            } else if (fieldType === 'checklist') {
+              // Checklist field (multiple checkboxes)
+              const label = document.createElement('label');
+              label.textContent = field.label;
+              label.style.marginTop = '0.5rem';
+              inputForm.appendChild(label);
+              
+              const checklistContainer = document.createElement('div');
+              checklistContainer.id = field.id;
+              checklistContainer.style.display = 'grid';
+              checklistContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+              checklistContainer.style.gap = '0.25rem';
+              checklistContainer.style.padding = '0.5rem';
+              checklistContainer.style.background = '#2a2a2a';
+              checklistContainer.style.borderRadius = '0.25rem';
+              checklistContainer.style.marginTop = '0.25rem';
+              
+              field.options.forEach(opt => {
+                const optContainer = document.createElement('div');
+                optContainer.style.display = 'flex';
+                optContainer.style.alignItems = 'center';
+                optContainer.style.gap = '0.25rem';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = opt.value;
+                checkbox.checked = field.defaultValue?.includes(opt.value) || false;
+                checkbox.style.width = 'auto';
+                checkbox.style.cursor = 'pointer';
+                
+                const optLabel = document.createElement('label');
+                optLabel.textContent = opt.label;
+                optLabel.style.margin = '0';
+                optLabel.style.cursor = 'pointer';
+                optLabel.style.fontSize = '0.7rem';
+                optLabel.style.color = '#d1d5db';
+                
+                optContainer.appendChild(checkbox);
+                optContainer.appendChild(optLabel);
+                checklistContainer.appendChild(optContainer);
+              });
+              
+              inputForm.appendChild(checklistContainer);
+              additionalInputs.push(checklistContainer);
+              
+            } else if (fieldType === 'typeAwareValue') {
+              // Type-aware value input that adapts based on property dataType (category/name lookup)
+              const typeAwareInput = createTypeAwareValueInput(
+                inputForm, 
+                field.categoryInputId || 'propCategory', 
+                field.propertyInputId || 'propName'
+              );
+              inputForm.appendChild(typeAwareInput.container);
+              // Store the typeAwareInput object for validation and value retrieval
+              additionalInputs.push(typeAwareInput);
+              
+            } else if (fieldType === 'typeAwareValueByQualifiedProp') {
+              // Type-aware value input that adapts based on qualified property ID
+              const typeAwareInput = createTypeAwareValueInputByQualifiedProp(
+                inputForm, 
+                field.qualPropInputId || 'qualPropStr'
+              );
+              inputForm.appendChild(typeAwareInput.container);
+              // Store the typeAwareInput object for validation and value retrieval
+              additionalInputs.push(typeAwareInput);
+              
+            } else {
+              // Text input field (or select for autocomplete)
+              const label = document.createElement('label');
+              label.textContent = field.label;
+              label.style.marginTop = '0.5rem';
+              
+              let input;
+              
+              // Use select dropdown for autocomplete if schemas are loaded
+              if (field.autocomplete && areSchemasLoaded()) {
+                input = createAutocompleteSelect(field, inputForm);
+              } else {
+                // Regular text input (fallback when schemas not loaded or no autocomplete)
+                input = document.createElement('input');
+                input.type = 'text';
+                input.id = field.id;
+                input.placeholder = field.placeholder || '';
+                const defaultVal = typeof field.defaultValue === 'function' 
+                  ? field.defaultValue() 
+                  : (field.defaultValue || '');
+                input.value = defaultVal;
+                input.className = 'w-full text-xs';
+              }
+              
+              inputForm.appendChild(label);
+              inputForm.appendChild(input);
+              additionalInputs.push(input);
+            }
           });
         }
       }
@@ -627,10 +1760,45 @@ function createDropdownMenu(title, items) {
               }
             });
             await item.inputConfig.onExecute(values);
+          } else if (item.inputConfig.additionalFields) {
+            // For modelSelect with additionalFields, gather values as object
+            const additionalValues = {};
+            let validationError = null;
+            
+            item.inputConfig.additionalFields.forEach((field, idx) => {
+              const fieldType = field.type || 'text';
+              const inputElement = additionalInputs[idx];
+              
+              if (fieldType === 'checkbox') {
+                additionalValues[field.id] = inputElement.checked;
+              } else if (fieldType === 'checklist') {
+                // Gather checked values from checklist
+                const checkboxes = inputElement.querySelectorAll('input[type="checkbox"]:checked');
+                const checkedValues = Array.from(checkboxes).map(cb => cb.value);
+                additionalValues[field.id] = checkedValues.join(',');
+              } else if (fieldType === 'typeAwareValue' || fieldType === 'typeAwareValueByQualifiedProp') {
+                // Type-aware value input - validate and get value
+                const validation = inputElement.validate();
+                if (!validation.valid) {
+                  validationError = validation.error;
+                }
+                additionalValues[field.id] = inputElement.getValue();
+              } else {
+                additionalValues[field.id] = inputElement.value;
+              }
+            });
+            
+            // Check for validation errors
+            if (validationError) {
+              console.error('Validation Error:', validationError);
+              alert(validationError);
+              return;
+            }
+            
+            await item.inputConfig.onExecute(mainInput.value, additionalValues);
           } else {
-            // For single field + additional fields, pass as array
-            const values = [mainInput.value, ...additionalInputs.map(inp => inp.value)];
-            await item.inputConfig.onExecute(...values);
+            // For single field only
+            await item.inputConfig.onExecute(mainInput.value);
           }
           
           // Collapse form after success
@@ -681,6 +1849,34 @@ function createDropdownMenu(title, items) {
                 }
               }
             });
+          } else if (item.inputConfig.type === 'groupSelect') {
+            // Refresh group dropdown options from cache
+            if (mainInput.tagName.toLowerCase() === 'select') {
+              // Remember current selection before refresh
+              const previousValue = mainInput.value;
+              mainInput.innerHTML = '';
+              const groups = getGroupsForDropdown();
+              if (groups.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '-- No groups available --';
+                mainInput.appendChild(option);
+              } else {
+                // Determine default: previous value, current account, last used, or first
+                const currentGroupURN = getCurrentGroupURN();
+                const lastGroupURN = sessionStorage.getItem('tandem-testbed-lastGroupURN');
+                const defaultGroupURN = previousValue || currentGroupURN || lastGroupURN || (groups[0]?.urn);
+                
+                groups.forEach((group) => {
+                  const option = document.createElement('option');
+                  option.value = group.urn;
+                  const displayName = group.name || 'Unnamed Group';
+                  option.textContent = `${displayName} - ${group.urn}`;
+                  if (group.urn === defaultGroupURN) option.selected = true;
+                  mainInput.appendChild(option);
+                });
+              }
+            }
           } else if (item.inputConfig.type !== 'modelSelect') {
             // Refresh single text input
             if (mainInput.tagName.toLowerCase() === 'input') {

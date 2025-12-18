@@ -358,3 +358,458 @@ export async function findElementsWherePropValueEquals(facilityURN, region, cate
   console.groupEnd();
 }
 
+/**
+ * Scan all elements in a model with no filters (brute force)
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region header
+ * @returns {Promise<void>}
+ */
+export async function getScanBruteForce(modelURN, region) {
+  console.group("STUB: getScanBruteForce()");
+  
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  console.log(requestPath);
+  
+  await fetch(requestPath, makeRequestOptionsGET(region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+  
+  console.groupEnd();
+}
+
+/**
+ * Scan for elements with specific options (element keys, history, column families)
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region header
+ * @param {string} elemKeys - Comma-separated element keys (optional)
+ * @param {boolean} includeHistory - Whether to include history
+ * @param {string} colFamilies - Comma-separated column families (e.g., "n,z,l")
+ * @returns {Promise<void>}
+ */
+export async function getScanElementsOptions(modelURN, region, elemKeys, includeHistory, colFamilies) {
+  console.group("STUB: getScanElementsOptions()");
+  
+  let elemKeysArray = [];
+  if (elemKeys === "") {
+    console.log("No element keys specified, scanning entire model...");
+  } else {
+    elemKeysArray = elemKeys.split(',').map(k => k.trim());
+    console.log("Scanning for specific element keys", elemKeysArray);
+  }
+  
+  let familiesArray = [];
+  if (colFamilies === "") {
+    console.log("No column families specified, returning all...");
+  } else {
+    familiesArray = colFamilies.split(',').map(f => f.trim());
+    console.log("Scanning for column families", familiesArray);
+  }
+  
+  const bodyPayload = JSON.stringify({
+    families: familiesArray.length > 0 ? familiesArray : undefined,
+    includeHistory: includeHistory,
+    keys: elemKeysArray.length > 0 ? elemKeysArray : undefined
+  });
+  
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  console.log(requestPath);
+  console.log("Payload:", bodyPayload);
+  
+  await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+  
+  console.groupEnd();
+}
+
+/**
+ * Scan for elements with specific qualified property columns
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region header
+ * @param {string} elemKeys - Comma-separated element keys (optional)
+ * @param {boolean} includeHistory - Whether to include history
+ * @param {string} qualProps - Comma-separated qualified properties (e.g., "z:5mQ,n:n")
+ * @returns {Promise<void>}
+ */
+export async function getScanElementsQualProps(modelURN, region, elemKeys, includeHistory, qualProps) {
+  console.group("STUB: getScanElementsQualProps()");
+  
+  let elemKeysArray = [];
+  if (elemKeys === "") {
+    console.log("No element keys specified, scanning entire model...");
+  } else {
+    elemKeysArray = elemKeys.split(',').map(k => k.trim());
+    console.log("Scanning for specific element keys", elemKeysArray);
+  }
+  
+  let qualPropsArray = [];
+  if (qualProps === "") {
+    console.log("No qualified properties specified, returning all...");
+  } else {
+    qualPropsArray = qualProps.split(',').map(p => p.trim());
+    console.log("Scanning for specific qualified properties", qualPropsArray);
+  }
+  
+  const bodyPayload = JSON.stringify({
+    qualifiedColumns: qualPropsArray.length > 0 ? qualPropsArray : undefined,
+    includeHistory: includeHistory,
+    keys: elemKeysArray.length > 0 ? elemKeysArray : undefined
+  });
+  
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  console.log(requestPath);
+  console.log("Payload:", bodyPayload);
+  
+  await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+  
+  console.groupEnd();
+}
+
+/**
+ * Get the full change history of all properties for the given elements
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region header
+ * @param {string} elemKeys - Comma-separated element keys
+ * @returns {Promise<void>}
+ */
+export async function getScanElementsFullChangeHistory(modelURN, region, elemKeys) {
+  console.group("STUB: getScanElementsFullChangeHistory()");
+  
+  if (elemKeys === "") {
+    console.error("ERROR: Element keys are required for this operation");
+    console.groupEnd();
+    return;
+  }
+  
+  const elemKeysArray = elemKeys.split(',').map(k => k.trim());
+  console.log("Element keys", elemKeysArray);
+  
+  const bodyPayload = JSON.stringify({
+    includeHistory: true,
+    keys: elemKeysArray
+  });
+  
+  const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+  console.log(requestPath);
+  console.log("Payload:", bodyPayload);
+  
+  await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region))
+    .then((response) => response.json())
+    .then((obj) => {
+      console.log("Result from Tandem DB Server -->", obj);
+    })
+    .catch(error => console.log('error', error));
+  
+  console.groupEnd();
+}
+
+/**
+ * Assign a classification to elements
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region header
+ * @param {string} classificationStr - Classification string (e.g., "Walls > Curtain Wall")
+ * @param {string} modelURN - Model URN
+ * @param {string} elementKeys - Comma-separated element keys
+ * @returns {Promise<void>}
+ */
+export async function assignClassification(facilityURN, region, classificationStr, modelURN, elementKeys) {
+  console.group("STUB: assignClassification()");
+  
+  // First, validate the classification exists in the facility template
+  const templatePath = `${tandemBaseURL}/twins/${facilityURN}/inlinetemplate`;
+  console.log(templatePath);
+  
+  try {
+    const templateResponse = await fetch(templatePath, makeRequestOptionsGET(region));
+    const template = await templateResponse.json();
+    
+    // Search for the classification node
+    let classificationNode = null;
+    
+    function findClassification(nodes, searchStr) {
+      if (!nodes) return null;
+      for (const node of nodes) {
+        if (node.name === searchStr || node.fullName === searchStr) {
+          return node;
+        }
+        if (node.children) {
+          const found = findClassification(node.children, searchStr);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    
+    if (template.classification) {
+      classificationNode = findClassification(template.classification, classificationStr);
+    }
+    
+    if (!classificationNode) {
+      console.error(`Could not find classification "${classificationStr}" in the facility template.`);
+      console.log("TIP: Use GET Facility Inline Template to see available classifications.");
+      console.groupEnd();
+      return;
+    }
+    
+    console.log("Classification node found:", classificationNode);
+    
+    // Parse element keys
+    const elementKeysArray = elementKeys.split(',').map(k => k.trim());
+    if (elementKeysArray.length === 0 || elementKeysArray[0] === "") {
+      console.error("ERROR: No element keys specified.");
+      console.groupEnd();
+      return;
+    }
+    
+    console.log("Element keys:", elementKeysArray);
+    console.log(`Setting classification to "${classificationStr}"`);
+    
+    // Create the mutations array
+    const mutsArray = [];
+    for (let i = 0; i < elementKeysArray.length; i++) {
+      // "i"=insert, "n:!v" is the qualified property name to override classification
+      const mutObj = ["i", "n", "!v", classificationStr];
+      mutsArray.push(mutObj);
+    }
+    
+    // Create the payload for the call to /mutate
+    const bodyPayload = JSON.stringify({
+      keys: elementKeysArray,
+      muts: mutsArray,
+      desc: "REST TestBedApp: updated classification"
+    });
+    
+    const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/mutate`;
+    console.log(requestPath);
+    console.log("Payload:", bodyPayload);
+    
+    await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region))
+      .then((response) => response.json())
+      .then((obj) => {
+        console.log("Result from Tandem DB Server -->", obj);
+      })
+      .catch(error => console.log('error', error));
+      
+  } catch (error) {
+    console.error('Error assigning classification:', error);
+  }
+  
+  console.groupEnd();
+}
+
+/**
+ * Set property values on elements using category and property name
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region header
+ * @param {string} propCategory - Property category name
+ * @param {string} propName - Property name
+ * @param {string} propVal - Property value to set
+ * @param {string} elementKeys - Comma-separated element keys
+ * @returns {Promise<void>}
+ */
+export async function setPropertySelSet(modelURN, region, propCategory, propName, propVal, elementKeys) {
+  console.group("STUB: setPropertySelSet()");
+  
+  // First, find the qualified property from the schema
+  const schemaPath = `${tandemBaseURL}/modeldata/${modelURN}/schema`;
+  console.log(schemaPath);
+  
+  try {
+    const schemaResponse = await fetch(schemaPath, makeRequestOptionsGET(region));
+    const schema = await schemaResponse.json();
+    
+    // Search for the qualified property
+    let qualProp = null;
+    const attrs = schema.attributes || [];
+    
+    for (let j = 0; j < attrs.length; j++) {
+      if (attrs[j].category === propCategory && attrs[j].name === propName) {
+        qualProp = attrs[j];
+        break;
+      }
+    }
+    
+    if (!qualProp) {
+      console.error(`Could not find property "${propCategory} | ${propName}" in model schema.`);
+      console.log("TIP: Use GET Model Data Schema to see available properties.");
+      console.groupEnd();
+      return;
+    }
+    
+    console.log("Qualified property found:", qualProp);
+    
+    // Parse element keys
+    const elementKeysArray = elementKeys.split(',').map(k => k.trim());
+    if (elementKeysArray.length === 0 || elementKeysArray[0] === "") {
+      console.error("ERROR: No element keys specified.");
+      console.groupEnd();
+      return;
+    }
+    
+    // Parse the value based on data type
+    let typedValue = propVal;
+    if (qualProp.dataType === 1 || qualProp.dataType === 2) {
+      // Integer or Float
+      typedValue = parseFloat(propVal);
+    } else if (qualProp.dataType === 3) {
+      // Boolean
+      typedValue = propVal.toLowerCase() === 'true';
+    }
+    
+    console.log("Element keys:", elementKeysArray);
+    console.log(`Setting value for "${propCategory} | ${propName}" =`, typedValue);
+    
+    // Extract family and column from qualified property ID
+    const [fam, col] = qualProp.id.split(':');
+    
+    // Create the mutations array
+    const mutsArray = [];
+    for (let i = 0; i < elementKeysArray.length; i++) {
+      const mutObj = ["i", fam, col, typedValue]; // "i"=insert
+      mutsArray.push(mutObj);
+    }
+    
+    // Create the payload for the call to /mutate
+    const bodyPayload = JSON.stringify({
+      keys: elementKeysArray,
+      muts: mutsArray,
+      desc: "REST TestBedApp: updated property"
+    });
+    
+    const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/mutate`;
+    console.log(requestPath);
+    console.log("Payload:", bodyPayload);
+    
+    await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region))
+      .then((response) => response.json())
+      .then((obj) => {
+        console.log("Result from Tandem DB Server -->", obj);
+      })
+      .catch(error => console.log('error', error));
+      
+  } catch (error) {
+    console.error('Error setting property:', error);
+  }
+  
+  console.groupEnd();
+}
+
+/**
+ * Set property values on elements using qualified property ID directly
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region header
+ * @param {string} qualPropStr - Qualified property string (e.g., "z:5mQ")
+ * @param {string} propVal - Property value to set
+ * @param {string} elementKeys - Comma-separated element keys
+ * @returns {Promise<void>}
+ */
+export async function setPropertySelSetQP(modelURN, region, qualPropStr, propVal, elementKeys) {
+  console.group("STUB: setPropertySelSetQP()");
+  
+  // First, find the qualified property from the schema to get the data type
+  const schemaPath = `${tandemBaseURL}/modeldata/${modelURN}/schema`;
+  console.log(schemaPath);
+  
+  try {
+    const schemaResponse = await fetch(schemaPath, makeRequestOptionsGET(region));
+    const schema = await schemaResponse.json();
+    
+    // Search for the qualified property by ID
+    let qualProp = null;
+    const attrs = schema.attributes || [];
+    
+    for (let j = 0; j < attrs.length; j++) {
+      if (attrs[j].id === qualPropStr) {
+        qualProp = attrs[j];
+        break;
+      }
+    }
+    
+    if (!qualProp) {
+      console.warn(`Property "${qualPropStr}" not found in schema. Proceeding with string value.`);
+    } else {
+      console.log("Qualified property found:", qualProp);
+    }
+    
+    // Parse element keys
+    const elementKeysArray = elementKeys.split(',').map(k => k.trim());
+    if (elementKeysArray.length === 0 || elementKeysArray[0] === "") {
+      console.error("ERROR: No element keys specified.");
+      console.groupEnd();
+      return;
+    }
+    
+    // Parse the value based on data type if we found the property
+    let typedValue = propVal;
+    if (qualProp) {
+      if (qualProp.dataType === 1 || qualProp.dataType === 2) {
+        // Integer or Float
+        typedValue = parseFloat(propVal);
+      } else if (qualProp.dataType === 3) {
+        // Boolean
+        typedValue = propVal.toLowerCase() === 'true';
+      }
+    }
+    
+    // Parse family and column from qualified property string
+    const parts = qualPropStr.split(':');
+    if (parts.length !== 2) {
+      console.error(`Invalid qualified property format: "${qualPropStr}". Expected format: "family:column" (e.g., "z:5mQ")`);
+      console.groupEnd();
+      return;
+    }
+    const [fam, col] = parts;
+    
+    console.log("Element keys:", elementKeysArray);
+    console.log(`Setting value for "${qualPropStr}" =`, typedValue);
+    
+    // Create the mutations array
+    const mutsArray = [];
+    for (let i = 0; i < elementKeysArray.length; i++) {
+      const mutObj = ["i", fam, col, typedValue]; // "i"=insert
+      mutsArray.push(mutObj);
+    }
+    
+    // Create the payload for the call to /mutate
+    const bodyPayload = JSON.stringify({
+      keys: elementKeysArray,
+      muts: mutsArray,
+      desc: "REST TestBedApp: updated property"
+    });
+    
+    const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/mutate`;
+    console.log(requestPath);
+    console.log("Payload:", bodyPayload);
+    
+    await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region))
+      .then((response) => response.json())
+      .then((obj) => {
+        console.log("Result from Tandem DB Server -->", obj);
+      })
+      .catch(error => console.log('error', error));
+      
+  } catch (error) {
+    console.error('Error setting property:', error);
+  }
+  
+  console.groupEnd();
+}
+

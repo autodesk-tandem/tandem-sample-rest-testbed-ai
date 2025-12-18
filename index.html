@@ -217,7 +217,8 @@
         }
         
         .dropdown-content.show {
-            max-height: 600px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
             transition: max-height 0.3s ease-in;
         }
         
@@ -258,11 +259,7 @@
             <div class="flex justify-between items-center h-14">
                 <!-- Logo and Title -->
                 <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-tandem-blue rounded flex items-center justify-center">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                        </svg>
-                    </div>
+                    <img src="./images/autodesk-tandem-small-social-400.png" width="32" height="32" alt="Tandem" class="rounded">
                     <h1 class="text-lg font-semibold text-dark-text">Tandem REST API Testbed</h1>
                 </div>
 
@@ -327,10 +324,8 @@
         <!-- Welcome Message (shown when not logged in) -->
         <div id="welcomeMessage" class="flex-1 flex items-center justify-center">
             <div class="text-center">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-tandem-blue/20 rounded mb-4">
-                    <svg class="w-8 h-8 text-tandem-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                    </svg>
+                <div class="inline-flex items-center justify-center mb-4">
+                    <img src="./images/autodesk-tandem-small-social-400.png" width="64" height="64" alt="Tandem" class="rounded">
                 </div>
                 <h2 class="text-xl font-bold text-dark-text mb-2">Welcome to Tandem REST API Testbed</h2>
                 <p class="text-xs text-dark-text-secondary mb-5">Sign in to explore Tandem REST API endpoints</p>
