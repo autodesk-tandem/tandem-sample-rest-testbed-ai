@@ -31,13 +31,20 @@ export function getEnv() {
   
   let loginRedirect;
   if (isGitHubPages) {
-    loginRedirect = window.location.origin + window.location.pathname;
+    // Remove trailing slash for consistency with APS callback registration
+    let path = window.location.pathname;
+    if (path.endsWith('/')) {
+      path = path.slice(0, -1);
+    }
+    loginRedirect = window.location.origin + path;
   } else if (isLocalhost) {
     loginRedirect = `http://localhost:${window.location.port || 8000}`;
   } else {
     // Default to current origin for other deployments
     loginRedirect = window.location.origin;
   }
+  
+  console.log('📍 Detected loginRedirect:', loginRedirect);
   
   // Return production environment with dynamic redirect
   return {
