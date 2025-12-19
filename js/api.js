@@ -426,3 +426,100 @@ export function extractPropertyValues(rawProps, qualProp, returnHistory = false)
   return propValues;
 }
 
+/**
+ * Get the schema for a model
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {string} region - Region identifier
+ * @returns {Promise<object>} Model schema
+ */
+export async function getModelSchema(modelURN, region) {
+  try {
+    const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/schema`;
+    const response = await fetch(requestPath, makeRequestOptionsGET(region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching model schema:', error);
+    return null;
+  }
+}
+
+/**
+ * Get the inline template for a facility
+ * Includes property sets and their parameters
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region identifier
+ * @returns {Promise<object>} Inline template
+ */
+export async function getFacilityInlineTemplate(facilityURN, region) {
+  try {
+    const requestPath = `${tandemBaseURL}/twins/${facilityURN}/inlinetemplate`;
+    const response = await fetch(requestPath, makeRequestOptionsGET(region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching inline template:', error);
+    return null;
+  }
+}
+
+/**
+ * Scan elements from a model with specific column families
+ * 
+ * @param {string} modelURN - Model URN
+ * @param {Array<string>} families - Column families to include
+ * @param {string} region - Region identifier
+ * @returns {Promise<Array>} Elements
+ */
+export async function scanModelElements(modelURN, families, region) {
+  try {
+    const requestPath = `${tandemBaseURL}/modeldata/${modelURN}/scan`;
+    const bodyPayload = JSON.stringify({
+      families: families,
+      includeHistory: false
+    });
+    
+    const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return data.slice(1); // Skip version row
+  } catch (error) {
+    console.error('Error scanning model elements:', error);
+    return [];
+  }
+}
+
+/**
+ * Match classification string against a pattern
+ * Supports wildcards like "Walls > *"
+ * 
+ * @param {string} classification - Element's classification
+ * @param {string} pattern - Pattern to match (may contain *)
+ * @returns {boolean} True if matches
+ */
+export function matchClassification(classification, pattern) {
+  if (!classification || !pattern) return false;
+  
+  // Exact match
+  if (classification === pattern) return true;
+  
+  // Wildcard match (e.g., "Walls > *" matches "Walls > Curtain Wall")
+  if (pattern.endsWith(' > *')) {
+    const prefix = pattern.slice(0, -4); // Remove " > *"
+    return classification.startsWith(prefix + ' > ');
+  }
+  
+  // Pattern is a prefix of classification
+  if (classification.startsWith(pattern + ' > ')) return true;
+  
+  return false;
+}
+

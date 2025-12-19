@@ -15,7 +15,11 @@ import {
   scanAllPropsForElements,
   getElements,
   getTaggedAssets,
-  extractPropertyValues
+  extractPropertyValues,
+  getModelSchema,
+  getFacilityInlineTemplate,
+  scanModelElements,
+  matchClassification
 } from '../api.js';
 import { QC, ColumnFamilies } from '../../tandem/constants.js';
 import { toFullKey, fromShortKeyArray, fromXrefKeyArray, toShortKey } from '../../tandem/keys.js';
@@ -354,6 +358,158 @@ export async function getFacilityStructure(facilityURN, region) {
 
   console.log("\nRaw data:", data);
   console.groupEnd();
+}
+
+/**
+ * Find classified elements with empty parameters
+ * 
+ * This function:
+ * 1. Gets the facility template to find property sets
+ * 2. Iterates through all models
+ * 3. For each element, finds parameters related to its classification
+ * 4. Reports elements that have empty values for required parameters
+ * 
+ * @param {string} facilityURN - Facility URN
+ * @param {string} region - Region identifier
+ */
+export async function findElementsWithEmptyParameters(facilityURN, region) {
+  console.group("STUB: findElementsWithEmptyParameters()");
+  console.log("Facility:", facilityURN);
+  console.log("This may take a moment for large facilities...");
+
+  try {
+    // Get facility template to find property sets
+    const template = await getFacilityInlineTemplate(facilityURN, region);
+    if (!template) {
+      console.error("Could not fetch facility template");
+      console.groupEnd();
+      return;
+    }
+
+    // Find the primary property set (matches template name)
+    const pset = template.psets?.find(p => p.name === template.name);
+    if (!pset) {
+      console.log("No property set found matching template name");
+      console.groupEnd();
+      return;
+    }
+    console.log(`Property set: ${pset.name} (${pset.parameters?.length || 0} parameters)`);
+
+    // Get models
+    const models = await getModels(facilityURN, region);
+    if (!models || models.length === 0) {
+      console.error("No models found in facility");
+      console.groupEnd();
+      return;
+    }
+
+    let totalElementsWithEmptyParams = 0;
+    const resultsTable = [];
+
+    for (const model of models) {
+      const modelId = model.modelId;
+      const modelName = model.label || 'Untitled Model';
+      console.log(`\nProcessing model: ${modelName}`);
+
+      // Get model schema
+      const schema = await getModelSchema(modelId, region);
+      if (!schema || !schema.attributes) {
+        console.log("  Could not fetch schema, skipping...");
+        continue;
+      }
+
+      // Scan elements with Standard and DtProperties families
+      const elements = await scanModelElements(
+        modelId, 
+        [ColumnFamilies.Standard, ColumnFamilies.DtProperties], 
+        region
+      );
+      console.log(`  Found ${elements.length} elements`);
+
+      for (const element of elements) {
+        const name = element[QC.OName]?.[0] ?? element[QC.Name]?.[0] ?? 'Unnamed';
+        const key = element.k;
+        
+        // Get classification or Tandem category
+        const classification = element[QC.OClassification]?.[0] ?? element[QC.Classification]?.[0];
+        const category = element[QC.OTandemCategory]?.[0] ?? element[QC.TandemCategory]?.[0];
+        
+        if (!classification && !category) continue;
+
+        // Find parameters that apply to this classification
+        let classParameters = [];
+        
+        if (classification && pset.parameters) {
+          classParameters = pset.parameters.filter(p => 
+            p.applicationFilters?.userClass?.some(c => matchClassification(classification, c))
+          );
+        } else if (category && pset.parameters) {
+          classParameters = pset.parameters.filter(p => 
+            p.applicationFilters?.tandemCategory?.some(c => matchClassification(category, c))
+          );
+        }
+
+        if (classParameters.length === 0) continue;
+
+        // Check for empty parameter values
+        const emptyParams = [];
+        
+        for (const classParam of classParameters) {
+          // Find parameter definition in schema
+          const paramDef = schema.attributes.find(a => 
+            a.category === classParam.category && a.name === classParam.name
+          );
+
+          if (!paramDef) continue;
+
+          // Check if parameter is empty or missing
+          const paramValue = element[paramDef.id];
+          if (paramValue === undefined || paramValue === '' || 
+              (Array.isArray(paramValue) && (paramValue.length === 0 || paramValue[0] === ''))) {
+            emptyParams.push(`${paramDef.category}.${paramDef.name}`);
+          }
+        }
+
+        if (emptyParams.length > 0) {
+          totalElementsWithEmptyParams++;
+          resultsTable.push({
+            model: modelName,
+            key: key,
+            name: name,
+            classification: classification || category,
+            emptyParameters: emptyParams.join(', ')
+          });
+          
+          // Only show first 100 in detailed log to avoid overwhelming output
+          if (totalElementsWithEmptyParams <= 100) {
+            console.log(`  ⚠ ${name}: ${emptyParams.length} empty param(s)`);
+          }
+        }
+      }
+    }
+
+    // Summary
+    console.log("\n" + "=".repeat(60));
+    console.log(`📊 SUMMARY: ${totalElementsWithEmptyParams} element(s) with empty parameters`);
+    
+    if (resultsTable.length > 0) {
+      console.log("\nElements with empty parameters:");
+      console.table(resultsTable.slice(0, 100)); // Show first 100
+      
+      if (resultsTable.length > 100) {
+        console.log(`... and ${resultsTable.length - 100} more (see raw data below)`);
+      }
+    }
+    
+    console.log("\nFull results:", resultsTable);
+    console.groupEnd();
+    return resultsTable;
+
+  } catch (error) {
+    console.error("Error:", error);
+    console.groupEnd();
+    return [];
+  }
 }
 
 

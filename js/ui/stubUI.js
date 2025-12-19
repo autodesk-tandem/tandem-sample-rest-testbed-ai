@@ -15,6 +15,7 @@ import * as modelStubs from '../stubs/modelStubs.js';
 import * as propertyStubs from '../stubs/propertyStubs.js';
 import * as groupStubs from '../stubs/groupStubs.js';
 import * as streamStubs from '../stubs/streamStubs.js';
+import * as documentStubs from '../stubs/documentStubs.js';
 import * as miscStubs from '../stubs/miscStubs.js';
 import * as appStubs from '../stubs/appStubs.js';
 import * as sdkStubs from '../stubs/sdkStubs.js';
@@ -963,30 +964,13 @@ export async function renderStubs(container, facilityURN, region) {
   
   // Create Stream Stubs Dropdown
   const streamDropdown = createDropdownMenu('Stream Stubs', [
-    // === READ OPERATIONS ===
     {
       label: 'GET Streams (from Default Model)',
       hasInput: false,
       action: () => streamStubs.getStreamsFromDefaultModel(currentFacilityURN, currentFacilityRegion)
     },
     {
-      label: 'GET Stream Secrets',
-      hasInput: true,
-      inputConfig: {
-        type: 'multiText',
-        fields: [
-          {
-            label: 'Stream Keys (comma-separated)',
-            id: 'streamKeys',
-            placeholder: 'e.g., ABC123,DEF456'
-          }
-        ],
-        onExecute: (values) => 
-          streamStubs.getStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
-      }
-    },
-    {
-      label: 'GET Stream Values (30 days)',
+      label: 'GET Stream Values',
       hasInput: true,
       inputConfig: {
         type: 'multiText',
@@ -995,26 +979,24 @@ export async function renderStubs(container, facilityURN, region) {
             label: 'Stream Key',
             id: 'streamKey',
             placeholder: 'Single stream key'
-          }
-        ],
-        onExecute: (values) => 
-          streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', 30)
-      }
-    },
-    {
-      label: 'GET Stream Values (365 days)',
-      hasInput: true,
-      inputConfig: {
-        type: 'multiText',
-        fields: [
+          },
           {
-            label: 'Stream Key',
-            id: 'streamKey',
-            placeholder: 'Single stream key'
+            label: 'Time Period',
+            id: 'timePeriod',
+            type: 'select',
+            options: [
+              { value: '7', label: '7 days' },
+              { value: '30', label: '30 days' },
+              { value: '365', label: '365 days' },
+              { value: '0', label: 'All Time' }
+            ],
+            defaultValue: '30'
           }
         ],
-        onExecute: (values) => 
-          streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', 365)
+        onExecute: (values) => {
+          const days = parseInt(values.timePeriod, 10);
+          return streamStubs.getStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', days);
+        }
       }
     },
     {
@@ -1033,7 +1015,6 @@ export async function renderStubs(container, facilityURN, region) {
           streamStubs.getLastSeenStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
       }
     },
-    // === WRITE OPERATIONS ===
     {
       label: 'POST Stream Values',
       hasInput: true,
@@ -1056,55 +1037,6 @@ export async function renderStubs(container, facilityURN, region) {
           streamStubs.postStreamValues(currentFacilityURN, currentFacilityRegion, values.streamKey || '', values.valuesJson || '')
       }
     },
-    {
-      label: 'Reset Stream Secrets',
-      hasInput: true,
-      inputConfig: {
-        type: 'multiText',
-        fields: [
-          {
-            label: 'Stream Keys (comma-separated)',
-            id: 'streamKeys',
-            placeholder: 'e.g., ABC123,DEF456'
-          }
-        ],
-        onExecute: (values) => 
-          streamStubs.resetStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
-      }
-    },
-    {
-      label: 'Remove Host from Stream',
-      hasInput: true,
-      inputConfig: {
-        type: 'multiText',
-        fields: [
-          {
-            label: 'Stream Keys (comma-separated)',
-            id: 'streamKeys',
-            placeholder: 'e.g., ABC123,DEF456'
-          }
-        ],
-        onExecute: (values) => 
-          streamStubs.removeHostFromStream(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
-      }
-    },
-    {
-      label: 'Delete Streams',
-      hasInput: true,
-      inputConfig: {
-        type: 'multiText',
-        fields: [
-          {
-            label: 'Stream Keys (comma-separated)',
-            id: 'streamKeys',
-            placeholder: 'e.g., ABC123,DEF456'
-          }
-        ],
-        onExecute: (values) => 
-          streamStubs.deleteStreams(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
-      }
-    },
-    // === CREATE/MODIFY OPERATIONS ===
     {
       label: 'Create Stream',
       hasInput: true,
@@ -1144,6 +1076,22 @@ export async function renderStubs(container, facilityURN, region) {
       }
     },
     {
+      label: 'Delete Streams',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.deleteStreams(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    {
       label: 'Assign Host to Stream',
       hasInput: true,
       inputConfig: {
@@ -1174,10 +1122,145 @@ export async function renderStubs(container, facilityURN, region) {
             values.hostKey || ''
           )
       }
+    },
+    {
+      label: 'Remove Host from Stream',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.removeHostFromStream(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    {
+      label: 'GET Stream Secrets',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.getStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
+    },
+    {
+      label: 'Reset Stream Secrets',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Stream Keys (comma-separated)',
+            id: 'streamKeys',
+            placeholder: 'e.g., ABC123,DEF456'
+          }
+        ],
+        onExecute: (values) => 
+          streamStubs.resetStreamSecrets(currentFacilityURN, currentFacilityRegion, values.streamKeys || '')
+      }
     }
   ]);
   
   container.appendChild(streamDropdown);
+  
+  // Create Document Stubs Dropdown
+  const documentDropdown = createDropdownMenu('Document Stubs', [
+    {
+      label: 'GET Documents',
+      hasInput: false,
+      action: () => documentStubs.getDocuments(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'GET Document Download Link',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Document ID',
+            id: 'documentId',
+            placeholder: 'e.g., abc123 (from GET Documents)'
+          }
+        ],
+        onExecute: (values) => 
+          documentStubs.getDocumentDownloadLink(currentFacilityURN, currentFacilityRegion, values.documentId || '')
+      }
+    },
+    {
+      label: 'Create Document Link',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'ACC Account ID',
+            id: 'accAccountId',
+            placeholder: 'ACC/BIM360 Account ID'
+          },
+          {
+            label: 'ACC Project ID',
+            id: 'accProjectId',
+            placeholder: 'ACC/BIM360 Project ID'
+          },
+          {
+            label: 'ACC Lineage (Item URN)',
+            id: 'accLineage',
+            placeholder: 'urn:adsk.wipprod:dm.lineage:...'
+          },
+          {
+            label: 'ACC Version (Version URN)',
+            id: 'accVersion',
+            placeholder: 'urn:adsk.wipprod:fs.file:...'
+          },
+          {
+            label: 'Document Name',
+            id: 'docName',
+            placeholder: 'Display name for the document'
+          }
+        ],
+        onExecute: (values) => 
+          documentStubs.createDocumentLink(
+            currentFacilityURN, 
+            currentFacilityRegion, 
+            values.accAccountId || '',
+            values.accProjectId || '',
+            values.accLineage || '',
+            values.accVersion || '',
+            values.docName || ''
+          )
+      }
+    },
+    {
+      label: 'Delete Documents',
+      hasInput: true,
+      inputConfig: {
+        type: 'multiText',
+        fields: [
+          {
+            label: 'Document IDs (comma-separated)',
+            id: 'documentIds',
+            placeholder: 'e.g., abc123,def456'
+          }
+        ],
+        onExecute: (values) => 
+          documentStubs.deleteDocuments(currentFacilityURN, currentFacilityRegion, values.documentIds || '')
+      }
+    }
+  ]);
+  
+  container.appendChild(documentDropdown);
   
   // Create Miscellaneous Stubs Dropdown
   const miscDropdown = createDropdownMenu('Miscellaneous Stubs', [
@@ -1335,6 +1418,11 @@ export async function renderStubs(container, facilityURN, region) {
       label: 'GET Facility Structure',
       hasInput: false,
       action: () => sdkStubs.getFacilityStructure(currentFacilityURN, currentFacilityRegion)
+    },
+    {
+      label: 'Find Elements with Empty Parameters',
+      hasInput: false,
+      action: () => sdkStubs.findElementsWithEmptyParameters(currentFacilityURN, currentFacilityRegion)
     }
   ]);
   
@@ -1431,6 +1519,34 @@ function createDropdownMenu(title, items) {
             inputForm.appendChild(checkboxContainer);
             
             additionalInputs.push(checkbox);
+          } else if (fieldType === 'select') {
+            // Select dropdown with predefined options
+            const label = document.createElement('label');
+            label.textContent = field.label;
+            if (fieldIdx > 0) label.style.marginTop = '0.5rem';
+            
+            const select = document.createElement('select');
+            select.id = field.id;
+            select.className = 'w-full text-xs';
+            
+            field.options.forEach(opt => {
+              const option = document.createElement('option');
+              option.value = opt.value;
+              option.textContent = opt.label;
+              if (opt.value === field.defaultValue) {
+                option.selected = true;
+              }
+              select.appendChild(option);
+            });
+            
+            inputForm.appendChild(label);
+            inputForm.appendChild(select);
+            
+            if (fieldIdx === 0) {
+              mainInput = select;
+            } else {
+              additionalInputs.push(select);
+            }
           } else {
             // Text input field (or select for autocomplete)
             const label = document.createElement('label');

@@ -44,8 +44,6 @@ export function getEnv() {
     loginRedirect = window.location.origin;
   }
   
-  console.log('📍 Detected loginRedirect:', loginRedirect);
-  
   // Return production environment with dynamic redirect
   return {
     ...prodEnvironment,
