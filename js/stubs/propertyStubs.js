@@ -1,4 +1,5 @@
 import { tandemBaseURL, makeRequestOptionsGET, makeRequestOptionsPOST } from '../api.js';
+import { ColumnFamilies, ColumnNames, MutateActions } from '../../tandem/constants.js';
 
 /**
  * Get the schema for a specific model, then search for a qualified property by category and name
@@ -197,7 +198,7 @@ export async function scanForUserProps(facilityURN, region) {
       console.log(`Model URN: ${modelURN}`);
       
       const bodyPayload = JSON.stringify({
-        families: ["z"], // DtProperties family
+        families: [ColumnFamilies.DtProperties],
         includeHistory: false
       });
       
@@ -583,8 +584,8 @@ export async function assignClassification(facilityURN, region, classificationSt
     // Create the mutations array
     const mutsArray = [];
     for (let i = 0; i < elementKeysArray.length; i++) {
-      // "i"=insert, "n:!v" is the qualified property name to override classification
-      const mutObj = ["i", "n", "!v", classificationStr];
+      // MutateActions.Insert, ColumnFamilies.Standard:ColumnNames.OClassification to override classification
+      const mutObj = [MutateActions.Insert, ColumnFamilies.Standard, ColumnNames.OClassification, classificationStr];
       mutsArray.push(mutObj);
     }
     
@@ -682,7 +683,7 @@ export async function setPropertySelSet(modelURN, region, propCategory, propName
     // Create the mutations array
     const mutsArray = [];
     for (let i = 0; i < elementKeysArray.length; i++) {
-      const mutObj = ["i", fam, col, typedValue]; // "i"=insert
+      const mutObj = [MutateActions.Insert, fam, col, typedValue];
       mutsArray.push(mutObj);
     }
     
@@ -784,7 +785,7 @@ export async function setPropertySelSetQP(modelURN, region, qualPropStr, propVal
     // Create the mutations array
     const mutsArray = [];
     for (let i = 0; i < elementKeysArray.length; i++) {
-      const mutObj = ["i", fam, col, typedValue]; // "i"=insert
+      const mutObj = [MutateActions.Insert, fam, col, typedValue];
       mutsArray.push(mutObj);
     }
     

@@ -8,7 +8,7 @@
  */
 
 import { tandemBaseURL, makeRequestOptionsGET, makeRequestOptionsPOST, getDefaultModelURN } from '../api.js';
-import { ColumnFamilies, ColumnNames, QC, ElementFlags } from '../../tandem/constants.js';
+import { ColumnFamilies, ColumnNames, QC, ElementFlags, MutateActions } from '../../tandem/constants.js';
 import { makeXrefKey } from '../../tandem/keys.js';
 
 /**
@@ -61,11 +61,12 @@ export async function getStreamsFromDefaultModel(facilityURN, region) {
   console.log("Request:", requestPath);
 
   const bodyPayload = JSON.stringify({
-    families: [ColumnFamilies.Standard],
+  families: [ColumnFamilies.Standard],
     includeHistory: false
   });
 
   try {
+    console.log("Body payload:", bodyPayload);
     const response = await fetch(requestPath, makeRequestOptionsPOST(bodyPayload, region));
     const result = await response.json();
     console.log("Result from Tandem DB Server -->", result);
@@ -147,9 +148,11 @@ export async function resetStreamSecrets(facilityURN, region, streamKeys) {
 
 /**
  * Get stream values for a time range
+ * @param {number} daysBack - Number of days back (0 = All Time)
  */
 export async function getStreamValues(facilityURN, region, streamKey, daysBack) {
-  console.group(`STUB: getStreamValues(${daysBack} days)`);
+  const timeLabel = daysBack === 0 ? 'All Time' : `${daysBack} days`;
+  console.group(`STUB: getStreamValues(${timeLabel})`);
 
   const defaultModelURN = getDefaultModelURN(facilityURN);
   console.log("Default model:", defaultModelURN);
@@ -157,13 +160,20 @@ export async function getStreamValues(facilityURN, region, streamKey, daysBack) 
 
   const dateNow = new Date();
   const timestampEnd = dateNow.getTime();
-  const dateStart = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-  const timestampStart = dateStart.getTime();
-
-  console.log("Time range:", dateStart.toISOString(), "to", dateNow.toISOString());
+  
+  let requestPath;
+  if (daysBack === 0) {
+    // All Time - don't specify from/to parameters
+    console.log("Time range: All Time (no date filter)");
+    requestPath = `${tandemBaseURL}/timeseries/models/${defaultModelURN}/streams/${streamKey}`;
+  } else {
+    const dateStart = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+    const timestampStart = dateStart.getTime();
+    console.log("Time range:", dateStart.toISOString(), "to", dateNow.toISOString());
+    requestPath = `${tandemBaseURL}/timeseries/models/${defaultModelURN}/streams/${streamKey}?from=${timestampStart}&to=${timestampEnd}`;
+  }
+  
   console.log("NOTE: API allows any time range, plus options: &limit=N, &sort=asc|desc, &substream=XYZ");
-
-  const requestPath = `${tandemBaseURL}/timeseries/models/${defaultModelURN}/streams/${streamKey}?from=${timestampStart}&to=${timestampEnd}`;
   console.log("Request:", requestPath);
 
   try {
@@ -275,16 +285,16 @@ export async function createStream(facilityURN, region, streamName, hostModelURN
 
   // Build mutations array
   const mutsArray = [
-    ["i", ColumnFamilies.Standard, ColumnNames.Name, streamName],
-    ["i", ColumnFamilies.Standard, ColumnNames.ElementFlags, ElementFlags.Stream],
-    ["i", ColumnFamilies.Standard, ColumnNames.UniformatClass, "D7070"],
-    ["i", ColumnFamilies.Standard, ColumnNames.CategoryId, 5031], // Category for Streams
+    [MutateActions.Insert, ColumnFamilies.Standard, ColumnNames.Name, streamName],
+    [MutateActions.Insert, ColumnFamilies.Standard, ColumnNames.ElementFlags, ElementFlags.Stream],
+    [MutateActions.Insert, ColumnFamilies.Standard, ColumnNames.UniformatClass, "D7070"],
+    [MutateActions.Insert, ColumnFamilies.Standard, ColumnNames.CategoryId, 5031], // Category for Streams
   ];
 
   // Add classification if provided
   if (classification) {
     console.log("Classification:", classification);
-    mutsArray.push(["i", ColumnFamilies.Standard, ColumnNames.Classification, classification]);
+    mutsArray.push([MutateActions.Insert, ColumnFamilies.Standard, ColumnNames.Classification, classification]);
   }
 
   // Add host if provided
@@ -292,7 +302,7 @@ export async function createStream(facilityURN, region, streamName, hostModelURN
     console.log("Host model:", hostModelURN);
     console.log("Host key:", hostKey);
     const hostXref = makeXrefKey(hostModelURN, hostKey);
-    mutsArray.push(["i", ColumnFamilies.Xrefs, ColumnNames.Parent, hostXref]);
+    mutsArray.push([MutateActions.Insert, ColumnFamilies.Xrefs, ColumnNames.Parent, hostXref]);
   }
 
   const bodyPayload = JSON.stringify({
@@ -344,7 +354,7 @@ export async function assignHostToStream(facilityURN, region, streamKey, hostMod
 
   const hostXref = makeXrefKey(hostModelURN, hostKey);
   const mutsArray = [
-    ["i", ColumnFamilies.Xrefs, ColumnNames.Parent, hostXref]
+    [MutateActions.Insert, ColumnFamilies.Xrefs, ColumnNames.Parent, hostXref]
   ];
 
   const bodyPayload = JSON.stringify({
@@ -385,7 +395,7 @@ export async function removeHostFromStream(facilityURN, region, streamKeys) {
 
   // Create mutations - one per stream
   const mutsArray = streamKeysArray.map(() => 
-    ["i", ColumnFamilies.Xrefs, ColumnNames.Parent, ""]
+    [MutateActions.Insert, ColumnFamilies.Xrefs, ColumnNames.Parent, ""]
   );
 
   const bodyPayload = JSON.stringify({
@@ -422,8 +432,8 @@ export async function deleteStreams(facilityURN, region, streamKeys) {
   const streamKeysArray = streamKeys.split(',').map(k => k.trim()).filter(k => k);
   console.log("Stream keys:", streamKeysArray);
 
-  // Create mutations - "a" = soft delete
-  const mutsArray = streamKeysArray.map(() => ["a", "", "", ""]);
+  // Create mutations - MutateActions.DeleteRow = soft delete
+  const mutsArray = streamKeysArray.map(() => [MutateActions.DeleteRow, "", "", ""]);
 
   const bodyPayload = JSON.stringify({
     keys: streamKeysArray,
