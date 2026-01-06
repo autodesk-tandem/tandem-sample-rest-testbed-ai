@@ -156,7 +156,7 @@ export async function checkLogin() {
 
   // Handle OAuth callback
   if (url.searchParams.has('code')) {
-    console.log('✅ OAuth callback received');
+    console.log('OAuth callback received');
     const code = url.searchParams.get('code');
     const codeVerifier = window.localStorage.getItem('codeVerifier');
 
