@@ -2,17 +2,17 @@
 
 A developer-focused web application for learning and exploring the Autodesk Tandem REST API. This project provides **STUB functions** that demonstrate how to make API calls, with detailed console logging to help you understand the request/response cycle.
 
-## 🎯 Purpose
+## Purpose
 
 This testbed is designed for **developer education**. Unlike typical end-user applications that hide API complexity, this project intentionally exposes it:
 
-- ✅ Learn how to construct Tandem API URLs
-- ✅ Understand what headers are required
-- ✅ See actual request/response data
-- ✅ Explore Tandem data structures interactively
-- ✅ Copy patterns into your own applications
+- Learn how to construct Tandem API URLs
+- Understand what headers are required
+- See actual request/response data
+- Explore Tandem data structures interactively
+- Copy patterns into your own applications
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -44,7 +44,7 @@ This testbed is designed for **developer education**. Unlike typical end-user ap
 
 7. **Click any API button** and watch the console!
 
-## 📖 How to Use
+## How to Use
 
 ### 1. Open the Console
 
@@ -82,7 +82,7 @@ You'll see detailed logging including:
 
 Click the triangles (▶) next to objects to drill down and explore the data structure.
 
-## 🏗️ Architecture
+## Architecture
 
 This project uses a clean separation of concerns:
 
@@ -109,7 +109,7 @@ tandem-sample-rest-testbed-ai/
 2. **UI files handle rendering** - Buttons, forms, event handlers
 3. **Clean separation** - Easy to copy STUB functions into your own projects
 
-## 📚 Adding New STUB Functions
+## Adding New STUB Functions
 
 Want to add more API endpoints? Follow this pattern:
 
@@ -119,21 +119,21 @@ Edit `js/stubs/facilityStubs.js` (or create a new stub file):
 
 ```javascript
 export async function getModels(facilityURN, region) {
-  console.group("🔍 STUB: getModels()");
+  console.group("STUB: getModels()");
   console.log("📋 Purpose: Get all models in the facility");
   
   const requestPath = `${tandemBaseURL}/twins/${facilityURN}`;
-  console.log("🌐 Request URL:", requestPath);
+  console.log("Request URL:", requestPath);
   
   try {
     const response = await fetch(requestPath, makeRequestOptionsGET(region));
     const data = await response.json();
     
-    console.log("✅ Success!");
-    logResponse(data.links, "📦 Models");
+    console.log("Success!");
+    logResponse(data.links, "Models");
     
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("Error:", error);
   }
   
   console.groupEnd();
@@ -154,14 +154,14 @@ section.appendChild(createStubButton(
 
 That's it! Refresh the page and your new button appears.
 
-## 🔧 Adding STUBs with Input Parameters
+## Adding STUBs with Input Parameters
 
 Some API calls need parameters (like a User ID). Use `createStubWithInput()`:
 
 ```javascript
 // In facilityStubs.js
 export async function getUserAccessLevel(facilityURN, region, userId) {
-  console.group("🔍 STUB: getUserAccessLevel()");
+  console.group("STUB: getUserAccessLevel()");
   
   const requestPath = `${tandemBaseURL}/twins/${facilityURN}/users/${userId}`;
   // ... rest of implementation
@@ -183,7 +183,7 @@ const stub = createStubWithInput(
 section.appendChild(stub);
 ```
 
-## 🔑 Understanding Tandem Concepts
+## Understanding Tandem Concepts
 
 ### Facilities vs Models
 
@@ -224,7 +224,7 @@ Properties are organized into families:
 
 See `tandem/constants.js` for the complete list.
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### "No facilities found"
 
@@ -251,39 +251,17 @@ Your token expired. Click "Sign Out" and sign in again.
 
 Make sure Chrome DevTools console is open - that's where all output goes!
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [Tandem API Documentation](https://aps.autodesk.com/en/docs/tandem/v1/developers_guide/overview/)
 - [Tandem Developer Forum](https://forums.autodesk.com/t5/tandem-api/bd-p/tandem-api)
 - [APS Developer Portal](https://aps.autodesk.com/)
 
-## 🔐 Authentication Note
+## Authentication Note
 
 This app uses **PKCE** (Proof Key for Code Exchange) for OAuth authentication, which is safe for public clients. The client ID is intentionally included in the source code - this is the recommended approach for browser-based apps. See [OAuth 2.0 for Browser-Based Apps](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps) for details.
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🤝 Contributing
-
-This is a learning tool! Feel free to:
-- Add more STUB functions
-- Improve documentation
-- Share with other developers
-- Report issues
-
-## 🎓 Next Steps
-
-Once you're comfortable with the STUB functions here:
-
-1. **Explore the Network tab** - See the actual HTTP requests
-2. **Copy patterns** - Use STUB code as templates for your apps
-3. **Read API docs** - Links are in the console output
-4. **Build something** - Apply what you learned!
-
----
-
-**Made with ❤️ for Tandem API developers**
-
 

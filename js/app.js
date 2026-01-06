@@ -89,7 +89,7 @@ function updateUIForLoginState(loggedIn, profileImg) {
  */
 async function loadUserResourcesCache() {
   try {
-    console.log('📊 Loading user resources...');
+    console.log('Feching available accounts and facilities...');
     const startTime = Date.now();
     
     userResourcesCache = await getUserResources('@me');
@@ -103,9 +103,9 @@ async function loadUserResourcesCache() {
     }
     
     const duration = Date.now() - startTime;
-    console.log(`✅ User resources loaded in ${duration}ms`);
+    console.log(`Accounts and facilities loaded in ${duration}ms`);
   } catch (error) {
-    console.error('Error loading user resources:', error);
+    console.error('Error fetching available accounts and facilities:', error);
     userResourcesCache = { twins: [], groups: [] };
   }
 }
@@ -258,7 +258,7 @@ async function populateFacilitiesDropdown(accounts, accountName) {
     if (accountFacilities.length === 0) {
       account.facilities = [];
     } else {
-      console.log(`📍 Fetching facilities for ${accountName}...`);
+      console.log(`Fetching facilities for ${accountName}...`);
       
       const facilitiesObj = await getFacilitiesForGroup(account.id);
       
