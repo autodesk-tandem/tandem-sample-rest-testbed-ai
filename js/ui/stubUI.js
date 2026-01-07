@@ -204,6 +204,273 @@ function renderTypeAwareInput(propInfo, inputWrapper, typeIndicator) {
 }
 
 /**
+ * Create a type-aware SEARCH input with matching options
+ * Shows different options based on property dataType:
+ * - String: match type (partial/exact/regex) + case insensitive
+ * - Numeric: comparison operators (=, !=, >, >=, <, <=)
+ * - Boolean: true/false radio buttons
+ * 
+ * @param {HTMLElement} inputForm - The parent form element
+ * @param {string} categoryInputId - ID of the category input element
+ * @param {string} propertyInputId - ID of the property input element
+ * @returns {Object} Object with container, getValue, validate, and getSearchOptions methods
+ */
+function createTypeAwareSearchInput(inputForm, categoryInputId, propertyInputId) {
+  const container = document.createElement('div');
+  container.style.marginTop = '0.75rem';
+  container.style.padding = '0.5rem';
+  container.style.background = '#1f1f1f';
+  container.style.border = '1px solid #404040';
+  container.style.borderRadius = '0.25rem';
+  
+  let currentType = 'string'; // Track current detected type
+  
+  // Type indicator
+  const typeIndicator = document.createElement('div');
+  typeIndicator.style.fontSize = '0.65rem';
+  typeIndicator.style.color = '#6b7280';
+  typeIndicator.style.marginBottom = '0.5rem';
+  typeIndicator.textContent = 'Property type: String (default)';
+  container.appendChild(typeIndicator);
+  
+  // Value input label
+  const valueLabel = document.createElement('label');
+  valueLabel.textContent = 'Match Value';
+  valueLabel.style.display = 'block';
+  valueLabel.style.fontSize = '0.7rem';
+  valueLabel.style.color = '#a0a0a0';
+  valueLabel.style.marginBottom = '0.25rem';
+  container.appendChild(valueLabel);
+  
+  // Value input
+  const valueInput = document.createElement('input');
+  valueInput.type = 'text';
+  valueInput.id = 'searchMatchValue';
+  valueInput.placeholder = 'e.g., Basic Wall or ^Concrete';
+  valueInput.className = 'w-full text-xs';
+  valueInput.style.marginBottom = '0.5rem';
+  container.appendChild(valueInput);
+  
+  // --- String Options Section ---
+  const stringOptions = document.createElement('div');
+  stringOptions.id = 'stringSearchOptions';
+  stringOptions.innerHTML = `
+    <div style="margin-bottom: 0.5rem;">
+      <label style="font-size: 0.7rem; color: #a0a0a0; display: block; margin-bottom: 0.25rem;">Match Type</label>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchMatchType" value="partial" checked style="accent-color: #0696D7; margin-right: 0.25rem;"> Partial
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchMatchType" value="exact" style="accent-color: #0696D7; margin-right: 0.25rem;"> Exact
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchMatchType" value="regex" style="accent-color: #0696D7; margin-right: 0.25rem;"> Regex
+        </label>
+      </div>
+    </div>
+    <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+      <input type="checkbox" id="searchCaseInsensitive" style="accent-color: #0696D7; margin-right: 0.25rem;"> Case Insensitive
+    </label>
+  `;
+  container.appendChild(stringOptions);
+  
+  // --- Numeric Options Section (hidden by default) ---
+  const numericOptions = document.createElement('div');
+  numericOptions.id = 'numericSearchOptions';
+  numericOptions.style.display = 'none';
+  numericOptions.innerHTML = `
+    <div>
+      <label style="font-size: 0.7rem; color: #a0a0a0; display: block; margin-bottom: 0.25rem;">Comparison Operator</label>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchNumericOp" value="=" checked style="accent-color: #0696D7; margin-right: 0.25rem;"> =
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchNumericOp" value="!=" style="accent-color: #0696D7; margin-right: 0.25rem;"> ≠
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchNumericOp" value=">" style="accent-color: #0696D7; margin-right: 0.25rem;"> >
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchNumericOp" value=">=" style="accent-color: #0696D7; margin-right: 0.25rem;"> ≥
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchNumericOp" value="<" style="accent-color: #0696D7; margin-right: 0.25rem;"> <
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchNumericOp" value="<=" style="accent-color: #0696D7; margin-right: 0.25rem;"> ≤
+        </label>
+      </div>
+    </div>
+  `;
+  container.appendChild(numericOptions);
+  
+  // --- Boolean Options Section (hidden by default) ---
+  const booleanOptions = document.createElement('div');
+  booleanOptions.id = 'booleanSearchOptions';
+  booleanOptions.style.display = 'none';
+  booleanOptions.innerHTML = `
+    <div>
+      <label style="font-size: 0.7rem; color: #a0a0a0; display: block; margin-bottom: 0.25rem;">Boolean Value</label>
+      <div style="display: flex; gap: 1rem;">
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchBooleanVal" value="true" checked style="accent-color: #0696D7; margin-right: 0.25rem;"> True
+        </label>
+        <label style="display: flex; align-items: center; cursor: pointer; font-size: 0.7rem; color: #e0e0e0;">
+          <input type="radio" name="searchBooleanVal" value="false" style="accent-color: #0696D7; margin-right: 0.25rem;"> False
+        </label>
+      </div>
+    </div>
+  `;
+  container.appendChild(booleanOptions);
+  
+  // --- Regex Help Section (for strings) ---
+  const regexHelp = document.createElement('div');
+  regexHelp.id = 'searchRegexHelp';
+  regexHelp.style.marginTop = '0.5rem';
+  regexHelp.style.padding = '0.5rem';
+  regexHelp.style.background = '#252525';
+  regexHelp.style.border = '1px solid #404040';
+  regexHelp.style.borderRadius = '0.25rem';
+  regexHelp.style.fontSize = '0.65rem';
+  regexHelp.innerHTML = `
+    <div style="font-weight: bold; color: #9ca3af; margin-bottom: 0.25rem;">RegEx Pattern Examples:</div>
+    <div style="font-family: monospace; color: #d1d5db; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.5rem;">
+      <span style="color: #10b981;">Concrete</span><span>Contains "Concrete"</span>
+      <span style="color: #10b981;">^Concrete</span><span>Starts with "Concrete"</span>
+      <span style="color: #10b981;">Steel$</span><span>Ends with "Steel"</span>
+      <span style="color: #10b981;">Concrete|Steel</span><span>"Concrete" OR "Steel"</span>
+    </div>
+  `;
+  container.appendChild(regexHelp);
+  
+  // Function to update UI based on detected property type
+  const updateSearchOptionsForType = () => {
+    const categoryInput = inputForm.querySelector(`#${categoryInputId}`);
+    const propertyInput = inputForm.querySelector(`#${propertyInputId}`);
+    
+    if (!categoryInput || !propertyInput) return;
+    
+    const category = categoryInput.value;
+    const propName = propertyInput.value;
+    
+    if (category && propName) {
+      const propInfo = getPropertyInfo(category, propName);
+      if (propInfo) {
+        const isNumeric = DataTypes.isNumeric(propInfo);
+        const isBoolean = DataTypes.isBoolean(propInfo);
+        
+        typeIndicator.textContent = `Property type: ${DataTypes.getName(propInfo)}`;
+        typeIndicator.style.color = '#10b981';
+        
+        if (isBoolean) {
+          currentType = 'boolean';
+          stringOptions.style.display = 'none';
+          numericOptions.style.display = 'none';
+          booleanOptions.style.display = 'block';
+          valueInput.style.display = 'none';
+          valueLabel.style.display = 'none';
+          regexHelp.style.display = 'none';
+        } else if (isNumeric) {
+          currentType = 'numeric';
+          stringOptions.style.display = 'none';
+          numericOptions.style.display = 'block';
+          booleanOptions.style.display = 'none';
+          valueInput.style.display = 'block';
+          valueLabel.style.display = 'block';
+          valueInput.placeholder = 'e.g., 100 or 3.14';
+          valueInput.type = 'number';
+          valueInput.step = propInfo.dataType === 2 ? '1' : 'any';
+          regexHelp.style.display = 'none';
+        } else {
+          currentType = 'string';
+          stringOptions.style.display = 'block';
+          numericOptions.style.display = 'none';
+          booleanOptions.style.display = 'none';
+          valueInput.style.display = 'block';
+          valueLabel.style.display = 'block';
+          valueInput.placeholder = 'e.g., Basic Wall or ^Concrete';
+          valueInput.type = 'text';
+          regexHelp.style.display = 'block';
+        }
+        return;
+      }
+    }
+    
+    // Default to string if property not found
+    typeIndicator.textContent = 'Property type: String (default)';
+    typeIndicator.style.color = '#6b7280';
+    currentType = 'string';
+    stringOptions.style.display = 'block';
+    numericOptions.style.display = 'none';
+    booleanOptions.style.display = 'none';
+    valueInput.style.display = 'block';
+    valueLabel.style.display = 'block';
+    valueInput.placeholder = 'e.g., Basic Wall or ^Concrete';
+    valueInput.type = 'text';
+    regexHelp.style.display = 'block';
+  };
+  
+  // Listen for changes on category and property inputs
+  inputForm.addEventListener('change', (event) => {
+    if (event.target.id === categoryInputId || event.target.id === propertyInputId) {
+      updateSearchOptionsForType();
+    }
+  });
+  
+  // Initial update
+  setTimeout(updateSearchOptionsForType, 50);
+  
+  return {
+    container,
+    getValue: () => valueInput.value,
+    getCurrentType: () => currentType,
+    getSearchOptions: () => {
+      if (currentType === 'boolean') {
+        const boolVal = container.querySelector('input[name="searchBooleanVal"]:checked')?.value;
+        return {
+          dataType: 'boolean',
+          value: boolVal === 'true'
+        };
+      } else if (currentType === 'numeric') {
+        const operator = container.querySelector('input[name="searchNumericOp"]:checked')?.value || '=';
+        return {
+          dataType: 'numeric',
+          operator: operator,
+          value: parseFloat(valueInput.value)
+        };
+      } else {
+        const matchType = container.querySelector('input[name="searchMatchType"]:checked')?.value || 'partial';
+        const caseInsensitive = container.querySelector('#searchCaseInsensitive')?.checked || false;
+        return {
+          dataType: 'string',
+          matchType: matchType,
+          caseInsensitive: caseInsensitive,
+          value: valueInput.value
+        };
+      }
+    },
+    validate: () => {
+      if (currentType === 'boolean') {
+        return { valid: true };
+      } else if (currentType === 'numeric') {
+        const val = parseFloat(valueInput.value);
+        if (isNaN(val)) {
+          return { valid: false, error: 'Please enter a valid number.' };
+        }
+        return { valid: true };
+      } else {
+        if (!valueInput.value.trim()) {
+          return { valid: false, error: 'Please enter a search value.' };
+        }
+        return { valid: true };
+      }
+    }
+  };
+}
+
+/**
  * Create a type-aware value input that adapts based on the selected property's dataType
  * 
  * @param {HTMLElement} inputForm - The parent form element
@@ -681,38 +948,21 @@ export async function renderStubs(container, facilityURN, region) {
             autocomplete: 'property'
           },
           {
-            label: 'Match String',
-            id: 'matchStr',
-            type: 'text',
-            placeholder: 'e.g., Basic Wall or ^Concrete',
-            defaultValue: () => getLastInputValue('matchStr', '')
-          },
-          {
-            label: 'Is Javascript RegEx?',
-            id: 'isRegEx',
-            type: 'checkbox',
-            defaultValue: true
-          },
-          {
-            label: 'Is Case Insensitive?',
-            id: 'isCaseInsensitive',
-            type: 'checkbox',
-            defaultValue: false
+            id: 'searchOptions',
+            type: 'typeAwareSearch',
+            categoryInputId: 'categoryName',
+            propertyInputId: 'propName'
           }
         ],
-        showRegexHelp: true, // Flag to show regex help
         onExecute: (values) => {
           saveInputValue('categoryName', values.categoryName);
           saveInputValue('propName', values.propName);
-          saveInputValue('matchStr', values.matchStr);
           return propertyStubs.findElementsWherePropValueEquals(
             currentFacilityURN, 
             currentFacilityRegion, 
             values.categoryName, 
             values.propName, 
-            values.matchStr,
-            values.isRegEx,
-            values.isCaseInsensitive
+            values.searchOptions
           );
         }
       }
@@ -1519,6 +1769,17 @@ function createDropdownMenu(title, items) {
             inputForm.appendChild(checkboxContainer);
             
             additionalInputs.push(checkbox);
+          } else if (fieldType === 'typeAwareSearch') {
+            // Type-aware search input with matching options
+            const typeAwareSearch = createTypeAwareSearchInput(
+              inputForm, 
+              field.categoryInputId || 'categoryName', 
+              field.propertyInputId || 'propName'
+            );
+            inputForm.appendChild(typeAwareSearch.container);
+            // Store reference with special marker for value extraction
+            additionalInputs.push({ isTypeAwareSearch: true, ref: typeAwareSearch, fieldId: field.id });
+            
           } else if (fieldType === 'select') {
             // Select dropdown with predefined options
             const label = document.createElement('label');
@@ -1864,17 +2125,40 @@ function createDropdownMenu(title, items) {
           if (item.inputConfig.type === 'multiText') {
             // For multiText, gather values by field ID
             const values = {};
-            item.inputConfig.fields.forEach(field => {
-              const input = inputForm.querySelector(`#${field.id}`);
-              if (input) {
-                // Handle checkboxes differently from text inputs
-                if (input.type === 'checkbox') {
-                  values[field.id] = input.checked;
-                } else {
-                  values[field.id] = input.value;
+            let validationError = null;
+            
+            item.inputConfig.fields.forEach((field, idx) => {
+              // Check if this is a typeAwareSearch field
+              if (field.type === 'typeAwareSearch') {
+                // Find the typeAwareSearch reference in additionalInputs
+                const searchInput = additionalInputs.find(inp => inp.isTypeAwareSearch && inp.fieldId === field.id);
+                if (searchInput) {
+                  const validation = searchInput.ref.validate();
+                  if (!validation.valid) {
+                    validationError = validation.error;
+                  }
+                  values[field.id] = searchInput.ref.getSearchOptions();
+                }
+              } else {
+                const input = inputForm.querySelector(`#${field.id}`);
+                if (input) {
+                  // Handle checkboxes differently from text inputs
+                  if (input.type === 'checkbox') {
+                    values[field.id] = input.checked;
+                  } else {
+                    values[field.id] = input.value;
+                  }
                 }
               }
             });
+            
+            // Check for validation errors
+            if (validationError) {
+              console.error('Validation Error:', validationError);
+              alert(validationError);
+              return;
+            }
+            
             await item.inputConfig.onExecute(values);
           } else if (item.inputConfig.additionalFields) {
             // For modelSelect with additionalFields, gather values as object
