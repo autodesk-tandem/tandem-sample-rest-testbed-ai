@@ -14,7 +14,7 @@ import {
   registerThumbnailURL,
   cleanupThumbnailURLs
 } from './api.js';
-import { normalizeRegion } from '../tandem/constants.js';
+import { normalizeRegion, SchemaVersion } from '../tandem/constants.js';
 import { renderStubs } from './ui/stubUI.js';
 import { loadSchemasForFacility, clearSchemaCache } from './state/schemaCache.js';
 
@@ -38,6 +38,7 @@ let currentFacilityURN = null;
 let currentFacilityRegion = null;
 let userResourcesCache = null;
 let facilityRegionMap = new Map();
+let lastLoadedFacilityURN = null;
 
 /**
  * Toggle loading overlay
@@ -316,32 +317,132 @@ async function populateFacilitiesDropdown(accounts, accountName) {
 }
 
 /**
+ * Show a modal dialog for schema version incompatibility
+ */
+function showSchemaWarningModal(facilityName, schemaVersion) {
+  // Create modal backdrop
+  const backdrop = document.createElement('div');
+  backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  backdrop.id = 'schema-warning-modal';
+  
+  const modal = document.createElement('div');
+  modal.className = 'bg-dark-card border border-dark-border rounded-lg p-6 max-w-md mx-4 shadow-xl';
+  modal.innerHTML = `
+    <div class="flex items-start space-x-4">
+      <div class="flex-shrink-0">
+        <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-dark-text mb-2">Incompatible Schema Version</h3>
+        <p class="text-dark-text-secondary text-sm mb-4">
+          The facility "<span class="text-dark-text font-medium">${facilityName}</span>" uses schema version ${schemaVersion}, 
+          but this application requires version ${SchemaVersion} or higher.
+        </p>
+        <p class="text-dark-text-secondary text-sm mb-4">
+          Please open this facility in <a href="https://tandem.autodesk.com" target="_blank" class="text-tandem-blue hover:underline">Autodesk Tandem</a> to upgrade it.
+        </p>
+        <button id="schema-warning-ok-btn" class="w-full bg-tandem-blue hover:bg-tandem-blue-dark text-white py-2 px-4 rounded text-sm font-medium transition-colors">
+          OK
+        </button>
+      </div>
+    </div>
+  `;
+  
+  backdrop.appendChild(modal);
+  document.body.appendChild(backdrop);
+  
+  // Close on button click
+  document.getElementById('schema-warning-ok-btn').addEventListener('click', () => {
+    backdrop.remove();
+  });
+  
+  // Close on backdrop click
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) {
+      backdrop.remove();
+    }
+  });
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      backdrop.remove();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+/**
+ * Try to load the next compatible facility in the list
+ */
+function tryNextCompatibleFacility(skipFacilityURN) {
+  if (!facilitySelect) return;
+  
+  const options = Array.from(facilitySelect.options);
+  for (const option of options) {
+    if (option.value && option.value !== skipFacilityURN) {
+      facilitySelect.value = option.value;
+      facilitySelect.dispatchEvent(new Event('change'));
+      return;
+    }
+  }
+  
+  // No other facilities available
+  console.warn('No compatible facilities available');
+}
+
+/**
  * Load facility information and render STUB functions
  */
 async function loadFacility(facilityURN) {
-  if (currentFacilityURN === facilityURN) {
+  if (currentFacilityURN === facilityURN && lastLoadedFacilityURN === facilityURN) {
     return; // Already loaded
   }
   
-  // Clear previous facility's schema cache
-  if (currentFacilityURN) {
-    clearSchemaCache();
-  }
-  
-  currentFacilityURN = facilityURN;
-  
   // Get region from cache (instant lookup, no API call needed!)
   // Region is already normalized to 'US', 'EMEA', or 'AUS' during caching
-  currentFacilityRegion = facilityRegionMap.get(facilityURN) || 'US';
+  const region = facilityRegionMap.get(facilityURN) || 'US';
   
   toggleLoading(true);
   
   try {
-    // Get facility info and thumbnail in parallel
-    const [info, thumbnailUrl] = await Promise.all([
-      getFacilityInfo(facilityURN, currentFacilityRegion),
-      getFacilityThumbnail(facilityURN, currentFacilityRegion)
-    ]);
+    // Get facility info first to check schema version
+    const info = await getFacilityInfo(facilityURN, region);
+    const facilityName = info?.props?.['Identity Data']?.['Building Name'] || 'Unnamed Facility';
+    const schemaVersion = info?.schemaVersion;
+    
+    // Check schema version BEFORE proceeding
+    if (schemaVersion !== undefined && schemaVersion < SchemaVersion) {
+      console.warn(`Facility "${facilityName}" has incompatible schema version ${schemaVersion} (required: ${SchemaVersion})`);
+      
+      toggleLoading(false);
+      
+      // Show modal warning
+      showSchemaWarningModal(facilityName, schemaVersion);
+      
+      // Revert dropdown to last loaded facility or try next
+      if (lastLoadedFacilityURN && facilitySelect) {
+        facilitySelect.value = lastLoadedFacilityURN;
+      } else {
+        // First load - try next compatible facility
+        tryNextCompatibleFacility(facilityURN);
+      }
+      return;
+    }
+    
+    // Clear previous facility's schema cache
+    if (currentFacilityURN && currentFacilityURN !== facilityURN) {
+      clearSchemaCache();
+    }
+    
+    currentFacilityURN = facilityURN;
+    currentFacilityRegion = region;
+    
+    // Get thumbnail
+    const thumbnailUrl = await getFacilityThumbnail(facilityURN, region);
     
     // Display thumbnail in viewer area
     if (thumbnailUrl) {
@@ -357,14 +458,23 @@ async function loadFacility(facilityURN) {
     // Load schemas for all models (for autocomplete)
     const models = info?.links || [];
     if (models.length > 0) {
-      await loadSchemasForFacility(models, currentFacilityRegion);
+      await loadSchemasForFacility(models, region);
     }
     
+    // Track successfully loaded facility
+    lastLoadedFacilityURN = facilityURN;
+    
     // Render STUB functions UI
-    await renderStubs(stubsContainer, facilityURN, currentFacilityRegion);
+    await renderStubs(stubsContainer, facilityURN, region);
+    
   } catch (error) {
     console.error('Error loading facility:', error);
     stubsContainer.innerHTML = `<p class="text-red-600 text-sm p-4">Error loading facility information</p>`;
+    
+    // Revert dropdown on error
+    if (lastLoadedFacilityURN && facilitySelect) {
+      facilitySelect.value = lastLoadedFacilityURN;
+    }
   } finally {
     toggleLoading(false);
   }

@@ -219,22 +219,97 @@ export async function scanForUserProps(facilityURN, region) {
 }
 
 /**
- * Find elements where a property value matches a specific pattern
+ * Find elements where a property value matches based on type-aware criteria
+ * Supports: string (partial/exact/regex), numeric (=,!=,>,>=,<,<=), boolean
  * 
  * @param {string} facilityURN - Facility URN
  * @param {string} region - Region header
  * @param {string} categoryName - Property category name
  * @param {string} propName - Property name
- * @param {string} matchStr - String or regex pattern to match
- * @param {boolean} isRegEx - Whether to treat matchStr as a regular expression
- * @param {boolean} isCaseInsensitive - Whether to do case-insensitive matching
+ * @param {Object} searchOptions - Search options object
+ * @param {string} searchOptions.dataType - 'string', 'numeric', or 'boolean'
+ * For string: { matchType: 'partial'|'exact'|'regex', caseInsensitive: boolean, value: string }
+ * For numeric: { operator: '='|'!='|'>'|'>='|'<'|'<=', value: number }
+ * For boolean: { value: boolean }
  * @returns {Promise<void>}
  */
-export async function findElementsWherePropValueEquals(facilityURN, region, categoryName, propName, matchStr, isRegEx, isCaseInsensitive) {
+export async function findElementsWherePropValueEquals(facilityURN, region, categoryName, propName, searchOptions) {
   console.group("STUB: findElementsWherePropValueEquals()");
+  console.log("Search options:", searchOptions);
   
   const facilityPath = `${tandemBaseURL}/twins/${facilityURN}`;
   console.log(facilityPath);
+  
+  // Build the matcher function based on data type
+  let matcher;
+  const dataType = searchOptions?.dataType || 'string';
+  
+  if (dataType === 'boolean') {
+    const targetValue = searchOptions.value;
+    console.log(`Matching boolean value: ${targetValue}`);
+    matcher = (val) => {
+      if (typeof val === 'boolean') return val === targetValue;
+      const valStr = String(val).toLowerCase();
+      return valStr === (targetValue ? 'true' : 'false') || 
+             valStr === (targetValue ? '1' : '0');
+    };
+  } else if (dataType === 'numeric') {
+    const targetValue = searchOptions.value;
+    const operator = searchOptions.operator || '=';
+    console.log(`Matching numeric value: ${operator} ${targetValue}`);
+    matcher = (val) => {
+      const numVal = typeof val === 'number' ? val : parseFloat(val);
+      if (isNaN(numVal)) return false;
+      switch (operator) {
+        case '=': return numVal === targetValue;
+        case '!=': return numVal !== targetValue;
+        case '>': return numVal > targetValue;
+        case '>=': return numVal >= targetValue;
+        case '<': return numVal < targetValue;
+        case '<=': return numVal <= targetValue;
+        default: return numVal === targetValue;
+      }
+    };
+  } else {
+    // String matching
+    const value = searchOptions?.value || '';
+    const matchType = searchOptions?.matchType || 'partial';
+    const caseInsensitive = searchOptions?.caseInsensitive || false;
+    
+    if (matchType === 'regex') {
+      try {
+        const regex = new RegExp(value, caseInsensitive ? 'i' : '');
+        console.log(`Matching regex: ${regex}`);
+        matcher = (val) => regex.test(String(val));
+      } catch (e) {
+        console.error('Invalid regex:', e.message);
+        console.log("TIP: Use 'Partial' or 'Exact' match type for literal string matching.");
+        matcher = (val) => {
+          const valStr = String(val);
+          return caseInsensitive 
+            ? valStr.toLowerCase().includes(value.toLowerCase())
+            : valStr.includes(value);
+        };
+      }
+    } else if (matchType === 'exact') {
+      console.log(`Matching exact: "${value}" (case insensitive: ${caseInsensitive})`);
+      matcher = (val) => {
+        const valStr = String(val);
+        return caseInsensitive 
+          ? valStr.toLowerCase() === value.toLowerCase()
+          : valStr === value;
+      };
+    } else {
+      // Partial match (default)
+      console.log(`Matching partial: "${value}" (case insensitive: ${caseInsensitive})`);
+      matcher = (val) => {
+        const valStr = String(val);
+        return caseInsensitive 
+          ? valStr.toLowerCase().includes(value.toLowerCase())
+          : valStr.includes(value);
+      };
+    }
+  }
   
   try {
     const facilityResponse = await fetch(facilityPath, makeRequestOptionsGET(region));
@@ -307,41 +382,14 @@ export async function findElementsWherePropValueEquals(facilityURN, region, cate
           console.log("Raw properties returned-->", rawProps);
           console.log("Extracted properties-->", propValues);
           
-          // Now filter based on match criteria
-          let matchingProps = null;
-          if (isRegEx) {
-            try {
-              let regEx = null;
-              if (isCaseInsensitive) {
-                regEx = new RegExp(matchStr, "i");
-              } else {
-                regEx = new RegExp(matchStr);
-              }
-              
-              console.log("Doing RegularExpression match for:", regEx);
-              matchingProps = propValues.filter(prop => regEx.test(prop.value));
-            } catch (error) {
-              console.error(`Invalid regular expression: "${matchStr}"`, error.message);
-              console.log("TIP: Uncheck 'Is Javascript RegEx?' for literal string matching, or escape special characters in your regex pattern.");
-              matchingProps = [];
-            }
-          } else {
-            if (isCaseInsensitive) {
-              console.log(`Doing case insensitive match for: "${matchStr}..."`);
-              matchingProps = propValues.filter(prop => 
-                String(prop.value).toLowerCase() === matchStr.toLowerCase()
-              );
-            } else {
-              console.log(`Doing literal match for: "${matchStr}..."`);
-              matchingProps = propValues.filter(prop => prop.value === matchStr);
-            }
-          }
+          // Filter using the type-aware matcher
+          const matchingProps = propValues.filter(prop => matcher(prop.value));
           
           if (matchingProps.length > 0) {
             console.log("Matching property values-->");
             console.table(matchingProps);
           } else {
-            console.log("No elements found with that value");
+            console.log("No elements found matching criteria");
           }
         } else {
           console.log("Could not find any elements with that property: ", propName);
