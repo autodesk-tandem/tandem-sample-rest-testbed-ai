@@ -14,7 +14,7 @@ const stgEnvironment = {
   name: "stg",
   oxygenHost: "https://accounts-staging.autodesk.com",
   apsHost: "https://developer-stg.api.autodesk.com",
-  apsKey: "clRKnlW7NbEfU1D0ukdYZ7iDaV8GXQJeH5irtVSxoFI2q0NG", 
+  apsKey: "YOUR_APS_CLIENT_ID", // Replace with your APS Client ID for staging environment
   loginRedirect: "http://localhost:8000",
   tandemDbBaseURL: "https://tandem-stg.autodesk.com/api/v1",
   tandemAppBaseURL: "https://tandem-stg.autodesk.com/app",
